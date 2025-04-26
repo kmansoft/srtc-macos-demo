@@ -50,7 +50,6 @@ class CameraManager {
     private var videoOutput: AVCaptureOutput?
 
     private var cameraCaptureDelegate: CameraCaptureDelegate?
-    private var cameraInputFrameCount = 0
     
 
     private func startCaptureSession() {

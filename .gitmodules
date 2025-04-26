@@ -1,0 +1,3 @@
+[submodule "srtc"]
+	path = srtc
+	url = git@github.com:kmansoft/srtc.git

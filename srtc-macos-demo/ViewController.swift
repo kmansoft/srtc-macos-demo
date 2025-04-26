@@ -13,12 +13,12 @@ class ViewController: NSViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         connectButton.action = #selector(connectButtonAction)
 
         serverTextField.stringValue = sharedPrefs.string(forKey: kPrefsKeyServer) ?? ""
         tokenTextField.stringValue = sharedPrefs.string(forKey: kPrefsKeyToken) ?? ""
-        
+
         cameraCaptureCallback = CameraCaptureCallback(owner: self)
         cameraManager.registerCameraCaptureCallback(cameraCaptureCallback!)
     }
@@ -40,7 +40,8 @@ class ViewController: NSViewController {
     private let kPrefsKeyToken = "token"
     
     private var isConnecting = false
-    
+    private var peerConnection: MacPeerConnection?
+
     @IBAction private func connectButtonAction(_ sender: NSButton) {
         let server = serverTextField.stringValue
         let token = tokenTextField.stringValue
@@ -49,7 +50,27 @@ class ViewController: NSViewController {
             showError("Server and token fields are required")
             return
         }
-        
+
+        if !isConnecting {
+            // Initiate connection
+            let offerConfig = MacOfferConfig(cName: UUID().uuidString)
+
+            let codec0 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_Default)
+            let codec1 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_ConstrainedBaseline)
+
+            let videoConfig = MacPubVideoConfig(codecList: [codec0!, codec1!])
+
+            peerConnection = MacPeerConnection()
+
+            let sdpOffer = try? peerConnection?.createOffer(offerConfig, videoConfig: videoConfig)
+            if sdpOffer == nil {
+                showError("The SDP offer is null")
+                return
+            }
+
+            NSLog("SDP offer: \(sdpOffer!)")
+        }
+
         isConnecting = !isConnecting
         
         if isConnecting {
