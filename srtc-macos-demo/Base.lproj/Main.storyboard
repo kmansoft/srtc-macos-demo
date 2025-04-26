@@ -714,7 +714,7 @@
                                 <rect key="frame" x="0.0" y="122" width="650" height="450"/>
                             </customView>
                             <gridView xPlacement="leading" yPlacement="bottom" rowAlignment="none" translatesAutoresizingMaskIntoConstraints="NO" id="I8F-Dr-J4P">
-                                <rect key="frame" x="20" y="48" width="610" height="66"/>
+                                <rect key="frame" x="20" y="36" width="610" height="78"/>
                                 <rows>
                                     <gridRow id="1Wt-HH-Ey5"/>
                                     <gridRow id="LZw-Le-uiJ"/>
@@ -726,7 +726,7 @@
                                 <gridCells>
                                     <gridCell row="1Wt-HH-Ey5" column="CcA-7J-LoO" id="CKv-Jx-hyB">
                                         <textField key="contentView" focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="UHz-8F-MBs">
-                                            <rect key="frame" x="-2" y="45" width="44" height="16"/>
+                                            <rect key="frame" x="-2" y="27" width="44" height="16"/>
                                             <textFieldCell key="cell" lineBreakMode="clipping" title="Server" id="95K-lS-gFz">
                                                 <font key="font" usesAppearanceFont="YES"/>
                                                 <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
@@ -736,7 +736,7 @@
                                     </gridCell>
                                     <gridCell row="1Wt-HH-Ey5" column="FtP-wk-Mm7" id="LfP-0O-rUt">
                                         <textField key="contentView" focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="BdO-KW-xL8">
-                                            <rect key="frame" x="510" y="45" width="100" height="21"/>
+                                            <rect key="frame" x="46" y="27" width="100" height="21"/>
                                             <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" borderStyle="bezel" placeholderString="https://foobar.com/whip" drawsBackground="YES" id="pKh-OG-wwP">
                                                 <font key="font" usesAppearanceFont="YES"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -756,7 +756,7 @@
                                     </gridCell>
                                     <gridCell row="LZw-Le-uiJ" column="FtP-wk-Mm7" id="BGv-pr-L21">
                                         <textField key="contentView" focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="7gL-Ie-WHf">
-                                            <rect key="frame" x="510" y="0.0" width="100" height="21"/>
+                                            <rect key="frame" x="46" y="0.0" width="100" height="21"/>
                                             <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" borderStyle="bezel" placeholderString="Something here" drawsBackground="YES" id="xhO-uW-tDh">
                                                 <font key="font" usesAppearanceFont="YES"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -767,7 +767,7 @@
                                 </gridCells>
                             </gridView>
                             <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="D8y-9C-kBl">
-                                <rect key="frame" x="208" y="13" width="234" height="32"/>
+                                <rect key="frame" x="208" y="1" width="234" height="32"/>
                                 <buttonCell key="cell" type="push" title="Connect" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="xMN-eF-985">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" metaFont="system"/>
@@ -777,7 +777,7 @@
                                 </constraints>
                             </button>
                         </subviews>
-                        <edgeInsets key="edgeInsets" left="0.0" right="0.0" top="0.0" bottom="20"/>
+                        <edgeInsets key="edgeInsets" left="0.0" right="0.0" top="0.0" bottom="8"/>
                         <constraints>
                             <constraint firstItem="I8F-Dr-J4P" firstAttribute="leading" secondItem="WkC-PQ-LwN" secondAttribute="leading" constant="20" symbolic="YES" id="Fav-UE-4c3"/>
                             <constraint firstAttribute="trailing" secondItem="I8F-Dr-J4P" secondAttribute="trailing" constant="20" symbolic="YES" id="QLK-ee-XRK"/>
@@ -794,6 +794,13 @@
                             <real value="3.4028234663852886e+38"/>
                         </customSpacing>
                     </stackView>
+                    <connections>
+                        <outlet property="cameraPreviewView" destination="U5E-Kf-7e7" id="3Z6-n2-OM0"/>
+                        <outlet property="connectButton" destination="D8y-9C-kBl" id="Pfk-ld-XPe"/>
+                        <outlet property="inputGridView" destination="I8F-Dr-J4P" id="LRL-wX-N1V"/>
+                        <outlet property="serverTextField" destination="BdO-KW-xL8" id="xIl-ci-hEh"/>
+                        <outlet property="tokenTextField" destination="7gL-Ie-WHf" id="0EU-vJ-dzN"/>
+                    </connections>
                 </viewController>
                 <customObject id="rPt-NT-nkU" userLabel="First Responder" customClass="NSResponder" sceneMemberID="firstResponder"/>
             </objects>
