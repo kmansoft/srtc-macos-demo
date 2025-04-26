@@ -1,5 +1,5 @@
 //
-//  MacPeerConnection.m
+//  MacSrtcBindings.mm
 //  srtc-macos-demo
 //
 //  Created by Kostya Vasilyev on 4/25/25.
@@ -7,7 +7,7 @@
 
 #import <Foundation/Foundation.h>
 
-#include "MacPeerConnection.h"
+#include "MacSrtcBindings.h"
 
 #include "srtc/sdp_offer.h"
 #include "srtc/sdp_answer.h"
@@ -179,6 +179,39 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 
 @end
 
+// Track
+
+@implementation MacTrack
+
+{
+    NSInteger mCodec;
+    NSInteger mProfileLevelId;
+}
+
+- (id) initWithCodec:(NSInteger) codec
+      profileLevelId:(NSInteger) profileLevelId
+{
+    self = [super init];
+    if (self) {
+        self->mCodec = codec;
+        self->mProfileLevelId = profileLevelId;
+    }
+
+    return self;
+}
+
+- (NSInteger) getCodec
+{
+    return self->mCodec;
+}
+
+- (NSInteger) getProfileLevelId
+{
+    return self->mProfileLevelId;
+}
+
+@end
+
 // Peer connection
 
 const NSInteger PeerConnectionState_Inactive = static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Inactive);
@@ -193,7 +226,11 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     std::mutex mMutex;
     std::unique_ptr<srtc::PeerConnection> mConn;
     std::shared_ptr<srtc::SdpOffer> mOffer;
+
     id<MacPeerConnectionStateCallback> mStateCallback;
+
+    MacTrack* mVideoSingleTrack;
+    NSArray<MacTrack*>* mVideoSimulcastTrackList;
 }
 
 - (id)init
@@ -288,6 +325,26 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     if (error2.isError()) {
         *outError = createNSError(error2);
         return;
+    }
+
+    if (const auto videoSingleTrack = mConn->getVideoSingleTrack()) {
+        const auto codec = static_cast<NSInteger>(videoSingleTrack->getCodec());
+        const auto profileLevelId = static_cast<NSInteger>(videoSingleTrack->getProfileLevelId());
+
+        const auto track = [[MacTrack alloc] initWithCodec:codec profileLevelId:profileLevelId];
+        mVideoSingleTrack = track;
+    } else if (const auto videoSimulcastTrackList = mConn->getVideoSimulcastTrackList(); !videoSimulcastTrackList.empty()) {
+        const auto list = [[NSMutableArray<MacTrack*> alloc] init];
+
+        for (const auto& videoSimulcastTrack : videoSimulcastTrackList) {
+            const auto codec = static_cast<NSInteger>(videoSimulcastTrack->getCodec());
+            const auto profileLevelId = static_cast<NSInteger>(videoSimulcastTrack->getProfileLevelId());
+
+            const auto track = [[MacTrack alloc] initWithCodec:codec profileLevelId:profileLevelId];
+            [list addObject: track];
+        }
+
+        mVideoSimulcastTrackList = [[NSArray alloc] initWithArray: list];
     }
 }
 

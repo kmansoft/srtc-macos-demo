@@ -19,14 +19,14 @@ class ViewController: NSViewController {
         serverTextField.stringValue = sharedPrefs.string(forKey: kPrefsKeyServer) ?? ""
         tokenTextField.stringValue = sharedPrefs.string(forKey: kPrefsKeyToken) ?? ""
 
-        cameraCaptureCallback = CameraCaptureCallback(owner: self)
-        cameraManager.registerCameraCaptureCallback(cameraCaptureCallback!)
+        captureCallback = CaptureCallback(owner: self)
+        captureManager.registerCallback(captureCallback!)
     }
     
     override func viewDidDisappear() {
         super.viewDidDisappear()
         
-        cameraManager.unregisterCameraCaptureCallback(cameraCaptureCallback!)
+        captureManager.unregisterCallback(captureCallback!)
     }
 
     @IBOutlet weak var cameraPreviewView: CameraPreviewView!
@@ -235,7 +235,7 @@ class ViewController: NSViewController {
         showStatus("PeerConnection state: \(label)")
     }
 
-    private class CameraCaptureCallback: CameraManager.CameraCaptureCallback {
+    private class CaptureCallback: CaptureManager.CaptureCallback {
         private weak var owner: ViewController?
 
         init(owner: ViewController) {
@@ -275,9 +275,9 @@ class ViewController: NSViewController {
         delegateQueue: nil
     )
 
-    private let cameraManager = CameraManager.shared
-    private var cameraCaptureCallback: CameraCaptureCallback!
-    
+    private let captureManager = CaptureManager.shared
+    private var captureCallback: CaptureCallback!
+
     private func onCameraFrame(sampleBuffer: CMSampleBuffer, preview: CGImage?) {
         videoEncoderWrapperLock.lock()
         defer { videoEncoderWrapperLock.unlock() }

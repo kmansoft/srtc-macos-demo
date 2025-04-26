@@ -1,5 +1,5 @@
 //
-//  CameraManager.swift
+//  CaptureManager.swift
 //  srtc-macos-demo
 //
 //  Created by Kostya Vasilyev on 4/25/25.
@@ -10,47 +10,48 @@ import CoreMedia
 import CoreGraphics
 import CoreImage
 
-class CameraManager {
-    static let shared = CameraManager()
+class CaptureManager {
+    static let shared = CaptureManager()
     
     // Callbacks
-    class CameraCaptureCallback {
+    class CaptureCallback {
         func onCameraFrame(sampleBuffer: CMSampleBuffer, preview: CGImage?) {
         }
     }
     
-    func registerCameraCaptureCallback(_ callback: CameraCaptureCallback) {
-        if !cameraCaptureCallbackList.contains(where: { $0 === callback }) {
-            cameraCaptureCallbackList.append(callback)
-            
-            if cameraCaptureCallbackList.count == 1 {
+    func registerCallback(_ callback: CaptureCallback) {
+        if !callbackList.contains(where: { $0 === callback }) {
+            callbackList.append(callback)
+
+            if callbackList.count == 1 {
                 startCaptureSession()
             }
         }
     }
     
-    func unregisterCameraCaptureCallback(_ callback: CameraCaptureCallback) {
-        if let index = cameraCaptureCallbackList.firstIndex(where: { $0 === callback }) {
-            cameraCaptureCallbackList.remove(at: index)
+    func unregisterCallback(_ callback: CaptureCallback) {
+        if let index = callbackList.firstIndex(where: { $0 === callback }) {
+            callbackList.remove(at: index)
 
-            if cameraCaptureCallbackList.isEmpty {
+            if callbackList.isEmpty {
                 stopCaptureSession()
             }
         }
     }
     
     // Callbacks
-    private var cameraCaptureCallbackList: [CameraCaptureCallback] = []
+    private var callbackList: [CaptureCallback] = []
 
     // Media capture
-    private let captureQueue = DispatchQueue(label: "media-queue")
+    private let captureQueue = DispatchQueue(label: "capture-queue")
     private var captureSession: AVCaptureSession?
 
     private var audioOutput: AVCaptureOutput?
     private var videoOutput: AVCaptureOutput?
 
     private var cameraCaptureDelegate: CameraCaptureDelegate?
-    
+
+    private let ciContext = CIContext(options: nil)
 
     private func startCaptureSession() {
         guard self.captureSession == nil else { return }
@@ -97,7 +98,7 @@ class CameraManager {
 
             DispatchQueue.main.async { [weak self] in
                 if let self = self {
-                    for callback in self.cameraCaptureCallbackList {
+                    for callback in self.callbackList {
                         callback.onCameraFrame(sampleBuffer: sampleBuffer, preview: preview)
                     }
                 }
@@ -122,14 +123,13 @@ class CameraManager {
     
     private func createCGImage(from pixelBuffer: CVPixelBuffer) -> CGImage? {
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let context = CIContext(options: nil)
-        return context.createCGImage(ciImage, from: ciImage.extent)
+        return ciContext.createCGImage(ciImage, from: ciImage.extent)
     }
 
     private class CameraCaptureDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
-        private var owner: CameraManager? = nil
+        private var owner: CaptureManager? = nil
         
-        init(owner: CameraManager) {
+        init(owner: CaptureManager) {
             super.init()
             self.owner = owner
         }

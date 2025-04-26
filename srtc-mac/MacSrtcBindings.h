@@ -1,5 +1,5 @@
 //
-//  MacPeerConnection.h
+//  MacSrtcBindings.h
 //  srtc-macos-demo
 //
 //  Created by Kostya Vasilyev on 4/25/25.
@@ -7,8 +7,8 @@
 
 #pragma once
 
-#ifndef MacPeerConnection_h
-#define MacPeerConnection_h
+#ifndef MacSrtcBindings_h
+#define MacSrtcBindings_h
 
 #include <Foundation/Foundation.h>
 
@@ -50,6 +50,18 @@ extern const NSInteger H264_Profile_Main;
 
 @end
 
+// Track
+
+@interface MacTrack : NSObject
+
+- (id) initWithCodec:(NSInteger) codec
+      profileLevelId:(NSInteger) profileLevelId;
+
+- (NSInteger) getCodec;
+- (NSInteger) getProfileLevelId;
+
+@end
+
 // Peer connection
 
 extern const NSInteger PeerConnectionState_Inactive;
@@ -77,4 +89,4 @@ extern const NSInteger PeerConnectionState_Closed;
 
 @end
 
-#endif /* MacPeerConnection_h */
+#endif /* MacSrtcBindings_h */
