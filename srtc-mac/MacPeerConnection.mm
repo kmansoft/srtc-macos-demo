@@ -14,6 +14,8 @@
 #include "srtc/peer_connection.h"
 
 #include <vector>
+#include <memory>
+#include <mutex>
 
 namespace {
 
@@ -134,6 +136,7 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 @implementation MacPeerConnection
 
 {
+    std::mutex mMutex;
     std::unique_ptr<srtc::PeerConnection> mConn;
     std::shared_ptr<srtc::SdpOffer> mOffer;
 }
@@ -175,12 +178,17 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 - (void)dealloc
 {
     NSLog(@"MacPeerConnection dealloc");
+
+    std::lock_guard lock(mMutex);
+    mConn.reset();
 }
 
 - (NSString*)createOffer:(MacOfferConfig*) config
              videoConfig:(MacPubVideoConfig*) videoConfig
                 outError:(NSError**) outError
 {
+    std::lock_guard lock(mMutex);
+
     srtc::OfferConfig srtcOfferConfig {
         .cname = [config getCName]
     };
@@ -212,6 +220,8 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 - (void)setAnswer:(NSString*) answer
          outError:(NSError**) outError
 {
+    std::lock_guard lock(mMutex);
+
     const auto answerStr = [answer UTF8String];
     const auto [sdp, error1] = srtc::SdpAnswer::parse(mOffer, answerStr, nullptr);
     if (error1.isError()) {
