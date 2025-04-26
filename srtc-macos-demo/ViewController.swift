@@ -61,6 +61,12 @@ class ViewController: NSViewController {
             sharedPrefs.set(server, forKey: kPrefsKeyServer)
             sharedPrefs.set(token, forKey: kPrefsKeyToken)
 
+            guard let url = URL(string: server) else {
+                showError("Invalid server URL")
+                return
+            }
+
+            // Configure and the generate the offer
             let offerConfig = MacOfferConfig(cName: UUID().uuidString)
 
             let codec0 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_Default)
@@ -73,39 +79,20 @@ class ViewController: NSViewController {
             peerConnection = MacPeerConnection()
             peerConnection?.setStateCallback(peerConnectionStateCallback)
 
-            let sdpOffer = try? peerConnection?.createOffer(offerConfig, videoConfig: videoConfig)
-            if sdpOffer == nil {
+            let offer = try? peerConnection?.createOffer(offerConfig, videoConfig: videoConfig)
+            if offer == nil {
+                peerConnection?.close()
+                peerConnection = nil
                 showError("The SDP offer is null")
                 return
             }
-
-            NSLog("SDP offer: \(sdpOffer!)")
-
-            guard let url = URL(string: server) else {
-                showError("Invalid server URL")
-                return
-            }
-
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/sdp", forHTTPHeaderField: "Content-Type")
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            request.httpBody = sdpOffer!.data(using: .utf8)
-
-            let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
-                if let self = self {
-                    DispatchQueue.main.async { [weak self] in
-                        self?.onSdpAnswer(data: data, response: response, error: error)
-                    }
-                }
-            }
-
-            task.resume()
 
             sender.title = "Disconnect"
             inputGridView.isHidden = true
 
             isConnecting = true
+
+            startSdpExchange(url: url, token: token, offer: offer!)
         } else {
             disconnect()
         }
@@ -128,10 +115,27 @@ class ViewController: NSViewController {
         connectButton.title = "Connect"
     }
 
-    private func onSdpAnswer(data: Data?, response: URLResponse?, error: (any Error)?) {
-        if let error = error {
-            disconnect()
-            showError("SDP http error: \(error.localizedDescription)")
+    private func startSdpExchange(url: URL, token: String, offer: String) {
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/sdp", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        request.httpBody = offer.data(using: .utf8)
+
+        Task {
+            do {
+                let (data, response) = try await httpSesssion.data(for: request)
+                onSdpAnswer(data: data, response: response)
+            } catch {
+                disconnect()
+                showError("Failed to connect to server: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    private func onSdpAnswer(data: Data?, response: URLResponse?) {
+        if !isConnecting {
             return
         }
 
@@ -141,12 +145,20 @@ class ViewController: NSViewController {
             return
         }
 
-        NSLog("SDP http status code: \(httpResponse.statusCode)")
+        guard httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 else {
+            disconnect()
+            showError("Invalid SDP http status code: \(httpResponse.statusCode)")
+            return
+        }
 
-        if let data = data {
-            if let answer = String(data: data, encoding: .utf8) {
-                onSdpAnswer(answer)
-            }
+        guard let data = data else {
+            disconnect()
+            showError("Did not receive any SDP answer")
+            return
+        }
+
+        if let answer = String(data: data, encoding: .utf8) {
+            onSdpAnswer(answer)
         }
     }
 
@@ -234,7 +246,35 @@ class ViewController: NSViewController {
             owner?.onCameraFrame(sampleBuffer: sampleBuffer, preview: preview)
         }
     }
-    
+
+    private class RedirectHandler: NSObject, URLSessionTaskDelegate {
+        func urlSession(
+            _ session: URLSession,
+            task: URLSessionTask,
+            willPerformHTTPRedirection response: HTTPURLResponse,
+            newRequest request: URLRequest,
+            completionHandler: @escaping (URLRequest?) -> Void
+        ) {
+            // Create a mutable copy of the redirected request
+            var redirectedRequest = request
+
+            // Copy the Authorization header from the original request if available
+            if let originalRequest = task.originalRequest,
+               let authorizationHeader = originalRequest.value(forHTTPHeaderField: "Authorization") {
+                redirectedRequest.setValue(authorizationHeader, forHTTPHeaderField: "Authorization")
+            }
+
+            // Complete with the modified request
+            completionHandler(redirectedRequest)
+        }
+    }
+
+    private let httpSesssion = URLSession(
+        configuration: .default,
+        delegate: RedirectHandler(),
+        delegateQueue: nil
+    )
+
     private let cameraManager = CameraManager.shared
     private var cameraCaptureCallback: CameraCaptureCallback!
     
