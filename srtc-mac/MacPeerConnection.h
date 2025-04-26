@@ -70,6 +70,9 @@ extern const NSInteger PeerConnectionState_Closed;
 - (void)setAnswer:(NSString*) answer
          outError:(NSError**) outError;
 
+- (void)setVideoSingleCodecSpecificData:(NSArray<NSData*>*) csd;
+- (void)publishVideoSingleFrame:(NSData*) data;
+
 - (void)close;
 
 @end

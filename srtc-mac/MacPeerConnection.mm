@@ -20,6 +20,8 @@
 
 namespace {
 
+const uint8_t kAnnexBPrefix[4] = { 0, 0, 0, 1 };
+
 NSError* createNSError(const srtc::Error& error)
 {
     NSDictionary *userInfo = @{
@@ -315,6 +317,37 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     if (mStateCallback) {
         const auto nsState = static_cast<NSInteger>(state);
         [mStateCallback onPeerConnectionStateChanged: nsState];
+    }
+}
+
+- (void)setVideoSingleCodecSpecificData:(NSArray<NSData*>*) csd
+{
+    std::lock_guard lock(mMutex);
+    if (const auto& conn = mConn) {
+        std::vector<srtc::ByteBuffer> list;
+
+        for (NSUInteger i = 0; i < [csd count]; i += 1) {
+            const auto data = [csd objectAtIndex:i];
+            srtc::ByteBuffer buf;
+            buf.append(kAnnexBPrefix, sizeof(kAnnexBPrefix));
+            buf.append(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
+            list.push_back(std::move(buf));
+        }
+
+        conn->setVideoSingleCodecSpecificData(std::move(list));
+    }
+}
+
+- (void)publishVideoSingleFrame:(NSData*) data
+{
+    std::lock_guard lock(mMutex);
+    if (const auto& conn = mConn) {
+        srtc::ByteBuffer buf;
+
+        buf.append(kAnnexBPrefix, sizeof(kAnnexBPrefix));
+        buf.append(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
+
+        conn->publishVideoSingleFrame(std::move(buf));
     }
 }
 

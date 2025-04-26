@@ -44,6 +44,9 @@ class ViewController: NSViewController {
     private var peerConnection: MacPeerConnection?
     private var peerConnectionStateCallback: MacPeerConnectionStateCallback?
 
+    private let videoEncoderWrapperLock = NSLock()
+    private var videoEncoderWrapperList: [VideoEncoderWrappper] = []
+
     @IBAction private func connectButtonAction(_ sender: NSButton) {
         let server = serverTextField.stringValue
         let token = tokenTextField.stringValue
@@ -112,6 +115,14 @@ class ViewController: NSViewController {
         peerConnection?.close()
         peerConnection = nil
 
+        videoEncoderWrapperLock.lock()
+        defer { videoEncoderWrapperLock.unlock() }
+
+        for encoder in videoEncoderWrapperList {
+            encoder.stop()
+        }
+        videoEncoderWrapperList.removeAll()
+
         isConnecting = false
         inputGridView.isHidden = false
         connectButton.title = "Connect"
@@ -147,7 +158,14 @@ class ViewController: NSViewController {
         if let error = error {
             disconnect()
             showError("Failed to set SDP answer: \(error.localizedDescription)")
+            return
         }
+
+        let videoEncoderWrapper = VideoEncoderWrappper(layer: nil,
+                                                       width: 1280,
+                                                       height: 720,
+                                                       callback: VideoFrameCallback(owner: self))
+        videoEncoderWrapperList.append(videoEncoderWrapper)
     }
 
     private func showStatus(_ message: String) {
@@ -158,6 +176,18 @@ class ViewController: NSViewController {
     private func showError(_ message: String) {
         statusLabel.stringValue = message
         statusLabel.textColor = .systemRed
+    }
+
+    private func onVideoCompressedFrame(layer: String?, csd: [NSData]?, nalus: [NSData]) {
+        if layer == nil {
+            if let csd = csd {
+                let list = csd.map({ Data($0) })
+                peerConnection?.setVideoSingleCodecSpecificData(list)
+            }
+            for nalu in nalus {
+                peerConnection?.publishVideoSingleFrame(Data(nalu))
+            }
+        }
     }
 
     private class PeerConnectionStateCallback: NSObject, MacPeerConnectionStateCallback {
@@ -175,7 +205,7 @@ class ViewController: NSViewController {
     }
 
     private func onPeerConnectionStateChanged(_ status: Int) {
-        var label = switch status {
+        let label = switch status {
         case PeerConnectionState_Inactive:
             "inactive"
         case PeerConnectionState_Connecting:
@@ -201,17 +231,36 @@ class ViewController: NSViewController {
         }
         
         override func onCameraFrame(sampleBuffer: CMSampleBuffer, preview: CGImage?) {
-            if let preview = preview {
-                owner?.onCameraFramePreview(preview)
-            }
+            owner?.onCameraFrame(sampleBuffer: sampleBuffer, preview: preview)
         }
     }
     
     private let cameraManager = CameraManager.shared
     private var cameraCaptureCallback: CameraCaptureCallback!
     
-    private func onCameraFramePreview(_ preview: CGImage) {
-        cameraPreviewView.displayPreview(preview)
+    private func onCameraFrame(sampleBuffer: CMSampleBuffer, preview: CGImage?) {
+        videoEncoderWrapperLock.lock()
+        defer { videoEncoderWrapperLock.unlock() }
+
+        for encoder in videoEncoderWrapperList {
+            encoder.submitFrameForCompression(sampleBuffer: sampleBuffer)
+        }
+
+        if let preview = preview {
+            cameraPreviewView.displayPreview(preview)
+        }
+    }
+
+    private class VideoFrameCallback: NSObject, VideoEncodedFrameCallback {
+        private weak var owner: ViewController?
+        
+        init(owner: ViewController) {
+            self.owner = owner
+        }
+        
+        func onCompressedFrame(layer: String?, frame: VideoEncodedFrame) {
+            owner?.onVideoCompressedFrame(layer: layer, csd: frame.csd, nalus: frame.nalus)
+        }
     }
 }
 
