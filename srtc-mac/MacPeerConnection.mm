@@ -12,6 +12,7 @@
 #include "srtc/sdp_offer.h"
 #include "srtc/sdp_answer.h"
 #include "srtc/peer_connection.h"
+#include "srtc/track.h"
 
 #include <vector>
 #include <memory>
@@ -32,12 +33,57 @@ NSError* createNSError(const srtc::Error& error)
     return ns;
 }
 
+class HighestProfileSelector : public srtc::SdpAnswer::TrackSelector {
+public:
+    ~HighestProfileSelector() override = default;
+
+    [[nodiscard]] std::shared_ptr<srtc::Track> selectTrack(srtc::MediaType type,
+                                                           const std::vector<std::shared_ptr<srtc::Track>>& list) const override;
+
+};
+
+bool isBetter(const std::shared_ptr<srtc::Track>& best,
+              const std::shared_ptr<srtc::Track>& curr)
+{
+    if (!best) {
+        return true;
+    }
+
+    if (best->getCodec() != curr->getCodec()) {
+        return best->getCodec() < curr->getCodec();
+    }
+
+    return best->getProfileLevelId() < curr->getProfileLevelId();
+}
+
+std::shared_ptr<srtc::Track> HighestProfileSelector::selectTrack(srtc::MediaType type,
+                                                                 const std::vector<std::shared_ptr<srtc::Track>>& list) const
+{
+    if (list.empty()) {
+        return nullptr;
+    }
+
+    if (type == srtc::MediaType::Audio) {
+        return list[0];
+    } else if (type == srtc::MediaType::Video) {
+        std::shared_ptr<srtc::Track> best;
+        for (const auto& curr : list) {
+            if (isBetter(best, curr)) {
+                best = curr;
+            }
+        }
+        return best;
+    } else {
+        return nullptr;
+    }
+}
+
 }
 
 // Codecs
 
-const NSInteger Codec_H264 = 1;
-const NSInteger Codec_Opus = 100;
+const NSInteger Codec_H264 = static_cast<NSInteger>(srtc::Codec::H264);
+const NSInteger Codec_Opus = static_cast<NSInteger>(srtc::Codec::Opus);
 
 const NSInteger H264_Profile_Default = 0x42001f;
 const NSInteger H264_Profile_ConstrainedBaseline = 0x42e01f;
@@ -133,12 +179,19 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 
 // Peer connection
 
+const NSInteger PeerConnectionState_Inactive = static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Inactive);
+const NSInteger PeerConnectionState_Connecting = static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Connecting);
+const NSInteger PeerConnectionState_Connected = static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Connected);
+const NSInteger PeerConnectionState_Failed = static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Failed);
+const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Closed);
+
 @implementation MacPeerConnection
 
 {
     std::mutex mMutex;
     std::unique_ptr<srtc::PeerConnection> mConn;
     std::shared_ptr<srtc::SdpOffer> mOffer;
+    id<MacPeerConnectionStateCallback> mStateCallback;
 }
 
 - (id)init
@@ -149,38 +202,36 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     if (self) {
         mConn = std::make_unique<srtc::PeerConnection>();
 
-        mConn->setConnectionStateListener([](const srtc::PeerConnection::ConnectionState& state) {
-            const char* label = "unknown";
-            switch (state) {
-                case srtc::PeerConnection::ConnectionState::Inactive:
-                    label = "inactive";
-                    break;
-                case srtc::PeerConnection::ConnectionState::Connecting:
-                    label = "connecting";
-                    break;
-                case srtc::PeerConnection::ConnectionState::Connected:
-                    label = "connected";
-                    break;
-                case srtc::PeerConnection::ConnectionState::Failed:
-                    label = "failed";
-                    break;
-                case srtc::PeerConnection::ConnectionState::Closed:
-                    label = "closed";
-                    break;
+        __weak typeof(self) weakSelf = self;
+
+        mConn->setConnectionStateListener([weakSelf](const srtc::PeerConnection::ConnectionState& state) {
+            __strong typeof(self) strongSelf = weakSelf;
+            if (strongSelf) {
+                [strongSelf onPeerConnectionState:state];
             }
-            NSLog(@"PeerConnection state = %s", label);
         });
     }
     
     return self;
 }
 
+- (void)setStateCallback:(id<MacPeerConnectionStateCallback>) callback
+{
+    mStateCallback = callback;
+}
+
 - (void)dealloc
 {
     NSLog(@"MacPeerConnection dealloc");
 
-    std::lock_guard lock(mMutex);
-    mConn.reset();
+    std::unique_ptr<srtc::PeerConnection> conn = {};
+
+    {
+        std::lock_guard lock(mMutex);
+        conn = std::move(mConn);
+    }
+
+    conn.reset();
 }
 
 - (NSString*)createOffer:(MacOfferConfig*) config
@@ -222,8 +273,10 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 {
     std::lock_guard lock(mMutex);
 
+    const auto selector = std::make_shared<HighestProfileSelector>();
+
     const auto answerStr = [answer UTF8String];
-    const auto [sdp, error1] = srtc::SdpAnswer::parse(mOffer, answerStr, nullptr);
+    const auto [sdp, error1] = srtc::SdpAnswer::parse(mOffer, answerStr, selector);
     if (error1.isError()) {
         *outError = createNSError(error1);
         return;
@@ -234,6 +287,49 @@ const NSInteger H264_Profile_Main = 0x4d001f;
         *outError = createNSError(error2);
         return;
     }
+}
+
+- (void)onPeerConnectionState:(srtc::PeerConnection::ConnectionState) state
+{
+    const char* label = "unknown";
+    switch (state) {
+        case srtc::PeerConnection::ConnectionState::Inactive:
+            label = "inactive";
+            break;
+        case srtc::PeerConnection::ConnectionState::Connecting:
+            label = "connecting";
+            break;
+        case srtc::PeerConnection::ConnectionState::Connected:
+            label = "connected";
+            break;
+        case srtc::PeerConnection::ConnectionState::Failed:
+            label = "failed";
+            break;
+        case srtc::PeerConnection::ConnectionState::Closed:
+            label = "closed";
+            break;
+    }
+    NSLog(@"PeerConnection state = %s", label);
+
+    std::lock_guard lock(mMutex);
+    if (mStateCallback) {
+        const auto nsState = static_cast<NSInteger>(state);
+        [mStateCallback onPeerConnectionStateChanged: nsState];
+    }
+}
+
+- (void)close
+{
+    NSLog(@"MacPeerConnection close");
+
+    std::unique_ptr<srtc::PeerConnection> conn = {};
+
+    {
+        std::lock_guard lock(mMutex);
+        conn = std::move(mConn);
+    }
+
+    conn.reset();
 }
 
 @end

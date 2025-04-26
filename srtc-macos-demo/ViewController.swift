@@ -34,6 +34,7 @@ class ViewController: NSViewController {
     @IBOutlet weak var serverTextField: NSTextField!
     @IBOutlet weak var tokenTextField: NSTextField!
     @IBOutlet weak var connectButton: NSButton!
+    @IBOutlet weak var statusLabel: NSTextField!
 
     private let sharedPrefs = UserDefaults.standard
     private let kPrefsKeyServer = "server"
@@ -41,6 +42,7 @@ class ViewController: NSViewController {
     
     private var isConnecting = false
     private var peerConnection: MacPeerConnection?
+    private var peerConnectionStateCallback: MacPeerConnectionStateCallback?
 
     @IBAction private func connectButtonAction(_ sender: NSButton) {
         let server = serverTextField.stringValue
@@ -53,6 +55,9 @@ class ViewController: NSViewController {
 
         if !isConnecting {
             // Initiate connection
+            sharedPrefs.set(server, forKey: kPrefsKeyServer)
+            sharedPrefs.set(token, forKey: kPrefsKeyToken)
+
             let offerConfig = MacOfferConfig(cName: UUID().uuidString)
 
             let codec0 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_Default)
@@ -60,7 +65,10 @@ class ViewController: NSViewController {
 
             let videoConfig = MacPubVideoConfig(codecList: [codec0!, codec1!])
 
+            peerConnectionStateCallback = PeerConnectionStateCallback(owner: self)
+
             peerConnection = MacPeerConnection()
+            peerConnection?.setStateCallback(peerConnectionStateCallback)
 
             let sdpOffer = try? peerConnection?.createOffer(offerConfig, videoConfig: videoConfig)
             if sdpOffer == nil {
@@ -90,25 +98,20 @@ class ViewController: NSViewController {
             }
 
             task.resume()
-        } else {
-            // Disconnect
-            peerConnection = nil
-        }
-
-        isConnecting = !isConnecting
-        
-        if isConnecting {
-            sharedPrefs.set(server, forKey: kPrefsKeyServer)
-            sharedPrefs.set(token, forKey: kPrefsKeyToken)
 
             sender.title = "Disconnect"
             inputGridView.isHidden = true
+
+            isConnecting = true
         } else {
-            clearIsConnecting()
+            disconnect()
         }
     }
 
-    private func clearIsConnecting() {
+    private func disconnect() {
+        peerConnection?.close()
+        peerConnection = nil
+
         isConnecting = false
         inputGridView.isHidden = false
         connectButton.title = "Connect"
@@ -116,14 +119,14 @@ class ViewController: NSViewController {
 
     private func onSdpAnswer(data: Data?, response: URLResponse?, error: (any Error)?) {
         if let error = error {
+            disconnect()
             showError("SDP http error: \(error.localizedDescription)")
-            clearIsConnecting()
             return
         }
 
         guard let httpResponse = response as? HTTPURLResponse else {
+            disconnect()
             showError("Invalid SDP http response")
-            clearIsConnecting()
             return
         }
 
@@ -140,28 +143,66 @@ class ViewController: NSViewController {
         print("SDP answer: \(answer)")
         var error: NSError?
         peerConnection?.setAnswer(answer, outError: &error)
+        
         if let error = error {
+            disconnect()
             showError("Failed to set SDP answer: \(error.localizedDescription)")
         }
     }
 
+    private func showStatus(_ message: String) {
+        statusLabel.stringValue = message
+        statusLabel.textColor = .labelColor
+    }
+
     private func showError(_ message: String) {
-        let alert = NSAlert()
-        alert.messageText = "Error"
-        alert.informativeText = message
-        alert.runModal()
+        statusLabel.stringValue = message
+        statusLabel.textColor = .systemRed
+    }
+
+    private class PeerConnectionStateCallback: NSObject, MacPeerConnectionStateCallback {
+        private weak var owner: ViewController?
+
+        init(owner: ViewController) {
+            self.owner = owner
+        }
+
+        func onPeerConnectionStateChanged(_ status: Int) {
+            DispatchQueue.main.async { [weak self] in
+                self?.owner?.onPeerConnectionStateChanged(status)
+            }
+        }
+    }
+
+    private func onPeerConnectionStateChanged(_ status: Int) {
+        var label = switch status {
+        case PeerConnectionState_Inactive:
+            "inactive"
+        case PeerConnectionState_Connecting:
+            "connecting"
+        case PeerConnectionState_Connected:
+            "connected"
+        case PeerConnectionState_Failed:
+            "failed"
+        case PeerConnectionState_Closed:
+            "closed"
+        default:
+            "unknown (\(status))"
+        }
+
+        showStatus("PeerConnection state: \(label)")
     }
 
     private class CameraCaptureCallback: CameraManager.CameraCaptureCallback {
-        private var owner: ViewController!
-        
+        private weak var owner: ViewController?
+
         init(owner: ViewController) {
             self.owner = owner
         }
         
         override func onCameraFrame(sampleBuffer: CMSampleBuffer, preview: CGImage?) {
             if let preview = preview {
-                owner.onCameraFramePreview(preview)
+                owner?.onCameraFramePreview(preview)
             }
         }
     }

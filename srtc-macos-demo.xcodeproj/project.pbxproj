@@ -305,6 +305,11 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"cmake-build-srtc-mac-debug",
+					"cmake-build-srtc-mac-debug/stun",
+					"cmake-build-srtc-mac-debug/openssl-lib",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 12.4;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "org.kman.srtc-macos-demo";

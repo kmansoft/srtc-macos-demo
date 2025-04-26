@@ -707,14 +707,14 @@
             <objects>
                 <viewController id="XfG-lQ-9wD" customClass="ViewController" customModule="srtc_macos_demo" customModuleProvider="target" sceneMemberID="viewController">
                     <stackView key="view" autoresizesSubviews="NO" distribution="fill" orientation="vertical" alignment="leading" horizontalStackHuggingPriority="249.99998474121094" verticalStackHuggingPriority="249.99998474121094" detachesHiddenViews="YES" id="WkC-PQ-LwN">
-                        <rect key="frame" x="0.0" y="0.0" width="650" height="572"/>
+                        <rect key="frame" x="0.0" y="0.0" width="650" height="584"/>
                         <autoresizingMask key="autoresizingMask"/>
                         <subviews>
-                            <customView translatesAutoresizingMaskIntoConstraints="NO" id="U5E-Kf-7e7" customClass="CameraPreviewView" customModule="srtc_macos_demo" customModuleProvider="target">
-                                <rect key="frame" x="0.0" y="122" width="650" height="450"/>
+                            <customView ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="U5E-Kf-7e7" customClass="CameraPreviewView" customModule="srtc_macos_demo" customModuleProvider="target">
+                                <rect key="frame" x="0.0" y="134" width="650" height="450"/>
                             </customView>
-                            <gridView xPlacement="leading" yPlacement="bottom" rowAlignment="none" translatesAutoresizingMaskIntoConstraints="NO" id="I8F-Dr-J4P">
-                                <rect key="frame" x="20" y="36" width="610" height="78"/>
+                            <gridView ambiguous="YES" xPlacement="leading" yPlacement="bottom" rowAlignment="none" translatesAutoresizingMaskIntoConstraints="NO" id="I8F-Dr-J4P">
+                                <rect key="frame" x="20" y="78" width="610" height="48"/>
                                 <rows>
                                     <gridRow id="1Wt-HH-Ey5"/>
                                     <gridRow id="LZw-Le-uiJ"/>
@@ -766,8 +766,8 @@
                                     </gridCell>
                                 </gridCells>
                             </gridView>
-                            <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="D8y-9C-kBl">
-                                <rect key="frame" x="208" y="1" width="234" height="32"/>
+                            <button verticalHuggingPriority="750" ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="D8y-9C-kBl">
+                                <rect key="frame" x="208" y="43" width="234" height="32"/>
                                 <buttonCell key="cell" type="push" title="Connect" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="xMN-eF-985">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" metaFont="system"/>
@@ -776,19 +776,32 @@
                                     <constraint firstAttribute="width" constant="220" id="MXb-1e-bXi"/>
                                 </constraints>
                             </button>
+                            <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="T6s-07-YC9">
+                                <rect key="frame" x="18" y="8" width="614" height="16"/>
+                                <textFieldCell key="cell" lineBreakMode="clipping" title="Enter the values and click Connect" id="U6G-g9-Vst">
+                                    <font key="font" metaFont="system"/>
+                                    <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                    <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                </textFieldCell>
+                            </textField>
                         </subviews>
                         <edgeInsets key="edgeInsets" left="0.0" right="0.0" top="0.0" bottom="8"/>
                         <constraints>
+                            <constraint firstItem="T6s-07-YC9" firstAttribute="leading" secondItem="WkC-PQ-LwN" secondAttribute="leading" constant="20" symbolic="YES" id="8av-2F-DWu"/>
+                            <constraint firstAttribute="trailing" secondItem="T6s-07-YC9" secondAttribute="trailing" constant="20" symbolic="YES" id="93x-c3-AyZ"/>
                             <constraint firstItem="I8F-Dr-J4P" firstAttribute="leading" secondItem="WkC-PQ-LwN" secondAttribute="leading" constant="20" symbolic="YES" id="Fav-UE-4c3"/>
                             <constraint firstAttribute="trailing" secondItem="I8F-Dr-J4P" secondAttribute="trailing" constant="20" symbolic="YES" id="QLK-ee-XRK"/>
+                            <constraint firstItem="T6s-07-YC9" firstAttribute="top" secondItem="D8y-9C-kBl" secondAttribute="bottom" constant="20" id="aKR-wS-Xij"/>
                             <constraint firstItem="D8y-9C-kBl" firstAttribute="centerX" secondItem="WkC-PQ-LwN" secondAttribute="centerX" id="saC-8K-GnA"/>
                         </constraints>
                         <visibilityPriorities>
                             <integer value="1000"/>
                             <integer value="1000"/>
                             <integer value="1000"/>
+                            <integer value="1000"/>
                         </visibilityPriorities>
                         <customSpacing>
+                            <real value="3.4028234663852886e+38"/>
                             <real value="3.4028234663852886e+38"/>
                             <real value="3.4028234663852886e+38"/>
                             <real value="3.4028234663852886e+38"/>
@@ -799,6 +812,7 @@
                         <outlet property="connectButton" destination="D8y-9C-kBl" id="Pfk-ld-XPe"/>
                         <outlet property="inputGridView" destination="I8F-Dr-J4P" id="LRL-wX-N1V"/>
                         <outlet property="serverTextField" destination="BdO-KW-xL8" id="xIl-ci-hEh"/>
+                        <outlet property="statusLabel" destination="T6s-07-YC9" id="f8M-Il-CVn"/>
                         <outlet property="tokenTextField" destination="7gL-Ie-WHf" id="0EU-vJ-dzN"/>
                     </connections>
                 </viewController>

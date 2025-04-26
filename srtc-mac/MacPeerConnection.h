@@ -42,18 +42,35 @@ extern const NSInteger H264_Profile_Main;
 
 @end
 
+// Peer connection callback
+
+@protocol MacPeerConnectionStateCallback <NSObject>
+
+- (void)onPeerConnectionStateChanged:(NSInteger) status;
+
+@end
+
 // Peer connection
+
+extern const NSInteger PeerConnectionState_Inactive;
+extern const NSInteger PeerConnectionState_Connecting;
+extern const NSInteger PeerConnectionState_Connected;
+extern const NSInteger PeerConnectionState_Failed;
+extern const NSInteger PeerConnectionState_Closed;
 
 @interface MacPeerConnection : NSObject
 
 - (id)init;
 - (void)dealloc;
 
+- (void)setStateCallback:(id<MacPeerConnectionStateCallback>) callback;
 - (NSString*)createOffer:(MacOfferConfig*) config
              videoConfig:(MacPubVideoConfig*) videoConfig
                 outError:(NSError**) outError;
 - (void)setAnswer:(NSString*) answer
          outError:(NSError**) outError;
+
+- (void)close;
 
 @end
 

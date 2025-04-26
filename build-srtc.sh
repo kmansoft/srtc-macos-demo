@@ -2,9 +2,17 @@
 
 set -e
 
-cmake -S srtc -B build-srtc-mac-debug
 
-cmake --build build-srtc-mac-debug --target srtc
+# DEBUG
+
+DIR=cmake-build-srtc-mac-debug
+
+cmake \
+	-DCMAKE_BUILD_TYPE=Debug \
+	-S srtc \
+	-B "${DIR}"
+
+cmake --build "${DIR}" --target srtc
 
 # Stable path for XCode
 
@@ -21,4 +29,4 @@ then
 	exit 1
 fi
 
-ln -s "$LIBPATH" build-srtc-mac-debug/openssl-lib
+ln -s "$LIBPATH" "${DIR}/openssl-lib"
