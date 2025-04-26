@@ -10,9 +10,22 @@
 		0DC84DE12DBC75FA00A81DC2 /* srtc-macos-demo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "srtc-macos-demo.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		0DC84E0B2DBCAD5000A81DC2 /* Exceptions for "srtc-macos-demo" folder in "srtc-macos-demo" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 0DC84DE02DBC75FA00A81DC2 /* srtc-macos-demo */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		0DC84DE32DBC75FA00A81DC2 /* srtc-macos-demo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				0DC84E0B2DBCAD5000A81DC2 /* Exceptions for "srtc-macos-demo" folder in "srtc-macos-demo" target */,
+			);
 			path = "srtc-macos-demo";
 			sourceTree = "<group>";
 		};
@@ -169,6 +182,7 @@
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 95W366MYDV;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -246,6 +260,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 95W366MYDV;
 				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu17;
@@ -279,6 +294,8 @@
 				DEVELOPMENT_TEAM = 95W366MYDV;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "srtc-macos-demo/Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Capture the camera for sending to WebRTC";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;
@@ -313,6 +330,8 @@
 				DEVELOPMENT_TEAM = 95W366MYDV;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "srtc-macos-demo/Info.plist";
+				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Capture the camera for sending to WebRTC";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSMainStoryboardFile = Main;

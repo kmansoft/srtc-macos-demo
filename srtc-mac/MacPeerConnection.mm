@@ -145,6 +145,28 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     self = [super init];
     if (self) {
         mConn = std::make_unique<srtc::PeerConnection>();
+
+        mConn->setConnectionStateListener([](const srtc::PeerConnection::ConnectionState& state) {
+            const char* label = "unknown";
+            switch (state) {
+                case srtc::PeerConnection::ConnectionState::Inactive:
+                    label = "inactive";
+                    break;
+                case srtc::PeerConnection::ConnectionState::Connecting:
+                    label = "connecting";
+                    break;
+                case srtc::PeerConnection::ConnectionState::Connected:
+                    label = "connected";
+                    break;
+                case srtc::PeerConnection::ConnectionState::Failed:
+                    label = "failed";
+                    break;
+                case srtc::PeerConnection::ConnectionState::Closed:
+                    label = "closed";
+                    break;
+            }
+            NSLog(@"PeerConnection state = %s", label);
+        });
     }
     
     return self;
@@ -171,14 +193,37 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 
     mOffer = std::make_shared<srtc::SdpOffer>(srtcOfferConfig, srtcVideoConfig, srtc::nullopt);
 
-    const auto [sdp, error] = mOffer->generate();
-    if (error.isError()) {
-        *outError = createNSError(error);
+    const auto [sdp, error1] = mOffer->generate();
+    if (error1.isError()) {
+        *outError = createNSError(error1);
+        return nil;
+    }
+
+    const auto error2 = mConn->setSdpOffer(mOffer);
+    if (error2.isError()) {
+        *outError = createNSError(error2);
         return nil;
     }
 
     return [[NSString alloc] initWithUTF8String:sdp.c_str()];
 
+}
+
+- (void)setAnswer:(NSString*) answer
+         outError:(NSError**) outError
+{
+    const auto answerStr = [answer UTF8String];
+    const auto [sdp, error1] = srtc::SdpAnswer::parse(mOffer, answerStr, nullptr);
+    if (error1.isError()) {
+        *outError = createNSError(error1);
+        return;
+    }
+
+    const auto error2 = mConn->setSdpAnswer(sdp);
+    if (error2.isError()) {
+        *outError = createNSError(error2);
+        return;
+    }
 }
 
 @end

@@ -52,6 +52,8 @@ extern const NSInteger H264_Profile_Main;
 - (NSString*)createOffer:(MacOfferConfig*) config
              videoConfig:(MacPubVideoConfig*) videoConfig
                 outError:(NSError**) outError;
+- (void)setAnswer:(NSString*) answer
+         outError:(NSError**) outError;
 
 @end
 

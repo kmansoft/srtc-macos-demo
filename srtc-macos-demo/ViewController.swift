@@ -69,6 +69,30 @@ class ViewController: NSViewController {
             }
 
             NSLog("SDP offer: \(sdpOffer!)")
+
+            guard let url = URL(string: server) else {
+                showError("Invalid server URL")
+                return
+            }
+
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/sdp", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            request.httpBody = sdpOffer!.data(using: .utf8)
+
+            let task = URLSession.shared.dataTask(with: request) { [weak self] data, response, error in
+                if let self = self {
+                    DispatchQueue.main.async { [weak self] in
+                        self?.onSdpAnswer(data: data, response: response, error: error)
+                    }
+                }
+            }
+
+            task.resume()
+        } else {
+            // Disconnect
+            peerConnection = nil
         }
 
         isConnecting = !isConnecting
@@ -80,11 +104,47 @@ class ViewController: NSViewController {
             sender.title = "Disconnect"
             inputGridView.isHidden = true
         } else {
-            sender.title = "Connect"
-            inputGridView.isHidden = false
+            clearIsConnecting()
         }
     }
-    
+
+    private func clearIsConnecting() {
+        isConnecting = false
+        inputGridView.isHidden = false
+        connectButton.title = "Connect"
+    }
+
+    private func onSdpAnswer(data: Data?, response: URLResponse?, error: (any Error)?) {
+        if let error = error {
+            showError("SDP http error: \(error.localizedDescription)")
+            clearIsConnecting()
+            return
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            showError("Invalid SDP http response")
+            clearIsConnecting()
+            return
+        }
+
+        NSLog("SDP http status code: \(httpResponse.statusCode)")
+
+        if let data = data {
+            if let answer = String(data: data, encoding: .utf8) {
+                onSdpAnswer(answer)
+            }
+        }
+    }
+
+    private func onSdpAnswer(_ answer: String) {
+        print("SDP answer: \(answer)")
+        var error: NSError?
+        peerConnection?.setAnswer(answer, outError: &error)
+        if let error = error {
+            showError("Failed to set SDP answer: \(error.localizedDescription)")
+        }
+    }
+
     private func showError(_ message: String) {
         let alert = NSAlert()
         alert.messageText = "Error"
