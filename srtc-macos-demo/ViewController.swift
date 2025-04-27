@@ -8,6 +8,7 @@
 import Cocoa
 import CoreMedia
 import CoreGraphics
+import VideoToolbox
 
 class ViewController: NSViewController {
 
@@ -27,12 +28,15 @@ class ViewController: NSViewController {
         super.viewDidDisappear()
         
         captureManager.unregisterCallback(captureCallback!)
+
+        disconnect()
     }
 
     @IBOutlet weak var cameraPreviewView: CameraPreviewView!
     @IBOutlet weak var inputGridView: NSGridView!
     @IBOutlet weak var serverTextField: NSTextField!
     @IBOutlet weak var tokenTextField: NSTextField!
+    @IBOutlet weak var simulcastCheck: NSButton!
     @IBOutlet weak var connectButton: NSButton!
     @IBOutlet weak var statusLabel: NSTextField!
 
@@ -72,7 +76,17 @@ class ViewController: NSViewController {
             let codec0 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_Default)
             let codec1 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_ConstrainedBaseline)
 
-            let videoConfig = MacPubVideoConfig(codecList: [codec0!, codec1!])
+            var layerList: [MacSimulcastLayer]? = nil
+
+            if simulcastCheck.state == .on {
+                layerList = [
+                    MacSimulcastLayer(name: "low", width: 320, height: 180, framesPerSecond: 15, kilobitPerSecond: 500),
+                    MacSimulcastLayer(name: "mid", width: 640, height: 360, framesPerSecond: 15, kilobitPerSecond: 1500),
+                    MacSimulcastLayer(name: "hi", width: 1280, height: 720, framesPerSecond: 15, kilobitPerSecond: 2000)
+                ]
+            }
+
+            let videoConfig = MacPubVideoConfig(codecList: [codec0!, codec1!], simulcastLayerList: layerList)
 
             peerConnectionStateCallback = PeerConnectionStateCallback(owner: self)
 
@@ -89,6 +103,7 @@ class ViewController: NSViewController {
 
             sender.title = "Disconnect"
             inputGridView.isHidden = true
+            simulcastCheck.isHidden = true
 
             isConnecting = true
 
@@ -112,6 +127,7 @@ class ViewController: NSViewController {
 
         isConnecting = false
         inputGridView.isHidden = false
+        simulcastCheck.isHidden = false
         connectButton.title = "Connect"
     }
 
@@ -173,11 +189,73 @@ class ViewController: NSViewController {
             return
         }
 
-        let videoEncoderWrapper = VideoEncoderWrappper(layer: nil,
-                                                       width: 1280,
-                                                       height: 720,
-                                                       callback: VideoFrameCallback(owner: self))
-        videoEncoderWrapperList.append(videoEncoderWrapper)
+        if let videoSingleTrack = peerConnection?.getVideoSingleTrack() {
+            if let encoder = createVideoEncoderWrapper(track: videoSingleTrack) {
+                videoEncoderWrapperList.append(encoder)
+            }
+        } else if let videoSimulcastTrackList = peerConnection?.getVideoSimulcastTrackList(), !videoSimulcastTrackList.isEmpty {
+            for videoSimulcastTrack in videoSimulcastTrackList {
+                if let encoder = createVideoEncoderWrapper(track: videoSimulcastTrack) {
+                    videoEncoderWrapperList.append(encoder)
+                }
+            }
+        } else {
+            disconnect()
+            showError("The SDP answer contains no video track")
+            return
+        }
+    }
+
+    private func createVideoEncoderWrapper(track: MacTrack) -> VideoEncoderWrappper? {
+        var width = 1280
+        var height = 720
+        var bitrate = 2000
+
+        if let layer = track.getSimulcastLayer() {
+            width = layer.getWidth()
+            height = layer.getHeight()
+            bitrate = layer.getKilobitsPerSecond()
+        }
+
+        var codecValue: FourCharCode
+        let profileLevelIdValue: CFString
+
+        let codec = track.getCodec()
+        let profileLevelId = track.getProfileLevelId()
+        switch(codec) {
+        case Codec_H264:
+            codecValue = kCMVideoCodecType_H264
+            switch(profileLevelId) {
+            case H264_Profile_Default:
+                profileLevelIdValue = kVTProfileLevel_H264_Baseline_3_1
+                break;
+            case H264_Profile_ConstrainedBaseline:
+                profileLevelIdValue = kVTProfileLevel_H264_ConstrainedBaseline_AutoLevel
+                break;
+            case H264_Profile_Main:
+                profileLevelIdValue = kVTProfileLevel_H264_Main_3_1
+                break;
+            default:
+                NSLog("Invalid profile \(profileLevelId)")
+                return nil
+            }
+            break
+        default:
+            NSLog("Invalid codec \(codec)")
+            return nil
+        }
+
+
+        let encoder = VideoEncoderWrappper(layer: track.getSimulcastLayer()?.getName(),
+                                           width: width,
+                                           height: height,
+                                           codecType: codecValue,
+                                           profileLevelId: profileLevelIdValue,
+                                           framesPerSecond: 15,
+                                           bitrate: bitrate * 1000,
+                                           callback: VideoFrameCallback(owner: self))
+        return encoder
+
     }
 
     private func showStatus(_ message: String) {
@@ -198,6 +276,14 @@ class ViewController: NSViewController {
             }
             for nalu in nalus {
                 peerConnection?.publishVideoSingleFrame(Data(nalu))
+            }
+        } else {
+            if let csd = csd {
+                let list = csd.map({ Data($0) })
+                peerConnection?.setVideoSimulcastCodecSpecificData(layer, csd: list)
+            }
+            for nalu in nalus {
+                peerConnection?.publishVideoSimulcastFrame(layer, data: Data(nalu))
             }
         }
     }

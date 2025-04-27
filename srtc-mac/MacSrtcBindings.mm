@@ -91,6 +91,63 @@ const NSInteger H264_Profile_Default = 0x42001f;
 const NSInteger H264_Profile_ConstrainedBaseline = 0x42e01f;
 const NSInteger H264_Profile_Main = 0x4d001f;
 
+// Simulcast Layer
+
+@implementation MacSimulcastLayer
+
+{
+    NSString* mName;
+    NSInteger mWidth;
+    NSInteger mHeight;
+    NSInteger mFramesPerSecond;
+    NSInteger mKilobitPerSecond;
+}
+
+- (id) initWithName:(NSString*) name
+              width:(NSInteger) width
+              height:(NSInteger) height
+     framesPerSecond:(NSInteger) framesPerSecond
+    kilobitPerSecond:(NSInteger) kilobitPerSecond
+{
+    self = [super init];
+    if (self) {
+        self->mName = name;
+        self->mWidth = width;
+        self->mHeight = height;
+        self->mFramesPerSecond = framesPerSecond;
+        self->mKilobitPerSecond = kilobitPerSecond;
+    }
+
+    return self;
+}
+
+- (NSString*) getName
+{
+    return mName;
+}
+
+- (NSInteger) getWidth
+{
+    return mWidth;
+}
+
+- (NSInteger) getHeight
+{
+    return mHeight;
+}
+
+- (NSInteger) getFramesPerSecond
+{
+    return mFramesPerSecond;
+}
+
+- (NSInteger) getKilobitsPerSecond
+{
+    return mKilobitPerSecond;
+}
+
+@end
+
 // Offer configuration
 
 @implementation MacOfferConfig
@@ -152,9 +209,11 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 
 {
     std::vector<srtc::PubVideoCodec> mCodecList;
+    std::vector<srtc::SimulcastLayer> mSimulcastLayerList;
 }
 
 - (id)initWithCodecList:(NSArray<MacPubVideoCodec*>*) codecList
+     simulcastLayerList:(NSArray<MacSimulcastLayer*>*) simulcastLayerList;
 {
     self = [super init];
     if (self) {
@@ -167,14 +226,31 @@ const NSInteger H264_Profile_Main = 0x4d001f;
                 });
             }
         }
+        if (simulcastLayerList) {
+            for (NSUInteger i = 0; i < [simulcastLayerList count]; i += 1) {
+                const auto layer = [simulcastLayerList objectAtIndex:i];
+                mSimulcastLayerList.push_back({
+                    .name = [[layer getName] UTF8String],
+                    .width = static_cast<uint16_t>([layer getWidth]),
+                    .height = static_cast<uint16_t>([layer getHeight]),
+                    .framesPerSecond = static_cast<uint16_t>([layer getFramesPerSecond]),
+                    .kilobitPerSecond = static_cast<uint32_t>([layer getKilobitsPerSecond])
+                });
+            }
+        }
     }
 
     return self;
 }
 
-- (std::vector<srtc::PubVideoCodec>)getCodecList
+- (std::vector<srtc::PubVideoCodec>) getCodecList
 {
     return mCodecList;
+}
+
+- (std::vector<srtc::SimulcastLayer>) getSimulcastLayerList
+{
+    return mSimulcastLayerList;
 }
 
 @end
@@ -184,15 +260,18 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 @implementation MacTrack
 
 {
+    MacSimulcastLayer* mSimulcastLayer;
     NSInteger mCodec;
     NSInteger mProfileLevelId;
 }
 
-- (id) initWithCodec:(NSInteger) codec
-      profileLevelId:(NSInteger) profileLevelId
+- (id) initWithLayer:(MacSimulcastLayer*) simulcastLayer
+               codec:(NSInteger) codec
+      profileLevelId:(NSInteger) profileLevelId;
 {
     self = [super init];
     if (self) {
+        self->mSimulcastLayer = simulcastLayer;
         self->mCodec = codec;
         self->mProfileLevelId = profileLevelId;
     }
@@ -200,14 +279,19 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     return self;
 }
 
+- (MacSimulcastLayer*) getSimulcastLayer
+{
+    return mSimulcastLayer;
+}
+
 - (NSInteger) getCodec
 {
-    return self->mCodec;
+    return mCodec;
 }
 
 - (NSInteger) getProfileLevelId
 {
-    return self->mProfileLevelId;
+    return mProfileLevelId;
 }
 
 @end
@@ -285,7 +369,8 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     srtc::optional<srtc::PubVideoConfig> srtcVideoConfig;
     if (videoConfig) {
         srtcVideoConfig = srtc::PubVideoConfig {
-            .codecList = [videoConfig getCodecList]
+            .codecList = [videoConfig getCodecList],
+            .simulcastLayerList = [videoConfig getSimulcastLayerList]
         };
     }
 
@@ -331,21 +416,38 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
         const auto codec = static_cast<NSInteger>(videoSingleTrack->getCodec());
         const auto profileLevelId = static_cast<NSInteger>(videoSingleTrack->getProfileLevelId());
 
-        const auto track = [[MacTrack alloc] initWithCodec:codec profileLevelId:profileLevelId];
+        const auto track = [[MacTrack alloc] initWithLayer:nil codec:codec profileLevelId:profileLevelId];
         mVideoSingleTrack = track;
     } else if (const auto videoSimulcastTrackList = mConn->getVideoSimulcastTrackList(); !videoSimulcastTrackList.empty()) {
         const auto list = [[NSMutableArray<MacTrack*> alloc] init];
 
         for (const auto& videoSimulcastTrack : videoSimulcastTrackList) {
+            const auto trackLayer = videoSimulcastTrack->getSimulcastLayer();
+            const auto layer = [[MacSimulcastLayer alloc] initWithName:[[NSString alloc] initWithUTF8String:trackLayer.name.c_str()]
+                                                                 width:static_cast<NSInteger>(trackLayer.width)
+                                                                height:static_cast<NSInteger>(trackLayer.height)
+                                                       framesPerSecond:static_cast<NSInteger>(trackLayer.framesPerSecond)
+                                                      kilobitPerSecond:static_cast<NSInteger>(trackLayer.kilobitPerSecond)];
+
             const auto codec = static_cast<NSInteger>(videoSimulcastTrack->getCodec());
             const auto profileLevelId = static_cast<NSInteger>(videoSimulcastTrack->getProfileLevelId());
 
-            const auto track = [[MacTrack alloc] initWithCodec:codec profileLevelId:profileLevelId];
+            const auto track = [[MacTrack alloc] initWithLayer:layer codec:codec profileLevelId:profileLevelId];
             [list addObject: track];
         }
 
         mVideoSimulcastTrackList = [[NSArray alloc] initWithArray: list];
     }
+}
+
+- (MacTrack*) getVideoSingleTrack
+{
+    return mVideoSingleTrack;
+}
+
+- (NSArray<MacTrack*>*) getVideoSimulcastTrackList
+{
+    return mVideoSimulcastTrackList;
 }
 
 - (void)onPeerConnectionState:(srtc::PeerConnection::ConnectionState) state
@@ -405,6 +507,40 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
         buf.append(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
 
         conn->publishVideoSingleFrame(std::move(buf));
+    }
+}
+
+- (void) setVideoSimulcastCodecSpecificData:(NSString*) layerName
+                                        csd:(NSArray<NSData*>*) csd
+{
+    std::lock_guard lock(mMutex);
+    if (const auto& conn = mConn) {
+        std::vector<srtc::ByteBuffer> list;
+
+        for (NSUInteger i = 0; i < [csd count]; i += 1) {
+            const auto data = [csd objectAtIndex:i];
+            srtc::ByteBuffer buf;
+            buf.append(kAnnexBPrefix, sizeof(kAnnexBPrefix));
+            buf.append(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
+            list.push_back(std::move(buf));
+        }
+
+        conn->setVideoSimulcastCodecSpecificData([layerName UTF8String], std::move(list));
+    }
+
+}
+
+- (void) publishVideoSimulcastFrame:(NSString*) layerName
+                               data:(NSData*) data
+{
+    std::lock_guard lock(mMutex);
+    if (const auto& conn = mConn) {
+        srtc::ByteBuffer buf;
+
+        buf.append(kAnnexBPrefix, sizeof(kAnnexBPrefix));
+        buf.append(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
+
+        conn->publishVideoSimulcastFrame([layerName UTF8String], std::move(buf));
     }
 }
 

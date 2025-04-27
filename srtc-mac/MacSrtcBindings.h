@@ -21,6 +21,24 @@ extern const NSInteger H264_Profile_Default;
 extern const NSInteger H264_Profile_ConstrainedBaseline;
 extern const NSInteger H264_Profile_Main;
 
+// Simulcast Layer
+
+@interface MacSimulcastLayer : NSObject
+
+- (id) initWithName:(NSString*) name
+              width:(NSInteger) width
+              height:(NSInteger) height
+     framesPerSecond:(NSInteger) framesPerSecond
+    kilobitPerSecond:(NSInteger) kilobitPerSecond;
+
+- (NSString*) getName;
+- (NSInteger) getWidth;
+- (NSInteger) getHeight;
+- (NSInteger) getFramesPerSecond;
+- (NSInteger) getKilobitsPerSecond;
+
+@end
+
 // Offer configuration
 
 @interface MacOfferConfig : NSObject
@@ -38,7 +56,8 @@ extern const NSInteger H264_Profile_Main;
 
 @interface MacPubVideoConfig : NSObject
 
-- (id)initWithCodecList:(NSArray<MacPubVideoCodec*>*) codecList;
+- (id)initWithCodecList:(NSArray<MacPubVideoCodec*>*) codecList
+     simulcastLayerList:(NSArray<MacSimulcastLayer*>*) simulcastLayerList;
 
 @end
 
@@ -54,9 +73,11 @@ extern const NSInteger H264_Profile_Main;
 
 @interface MacTrack : NSObject
 
-- (id) initWithCodec:(NSInteger) codec
+- (id) initWithLayer:(MacSimulcastLayer*) simulcastLayer
+               codec:(NSInteger) codec
       profileLevelId:(NSInteger) profileLevelId;
 
+- (MacSimulcastLayer*) getSimulcastLayer;
 - (NSInteger) getCodec;
 - (NSInteger) getProfileLevelId;
 
@@ -82,8 +103,16 @@ extern const NSInteger PeerConnectionState_Closed;
 - (void)setAnswer:(NSString*) answer
          outError:(NSError**) outError;
 
-- (void)setVideoSingleCodecSpecificData:(NSArray<NSData*>*) csd;
-- (void)publishVideoSingleFrame:(NSData*) data;
+- (MacTrack*) getVideoSingleTrack;
+- (NSArray<MacTrack*>*) getVideoSimulcastTrackList;
+
+- (void) setVideoSingleCodecSpecificData:(NSArray<NSData*>*) csd;
+- (void) publishVideoSingleFrame:(NSData*) data;
+
+- (void) setVideoSimulcastCodecSpecificData:(NSString*) layerName
+                                        csd:(NSArray<NSData*>*) csd;
+- (void) publishVideoSimulcastFrame:(NSString*) layerName
+                               data:(NSData*) data;
 
 - (void)close;
 

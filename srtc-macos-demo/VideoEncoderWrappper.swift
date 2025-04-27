@@ -35,7 +35,12 @@ class VideoEncoderWrappper {
     private var compressionSession: VTCompressionSession?
     private var frameCount: Int = 0
 
-    init(layer: String?, width: Int, height: Int, callback: VideoEncodedFrameCallback) {
+    init(layer: String?, width: Int, height: Int,
+         codecType: CMVideoCodecType,
+         profileLevelId: CFString,
+         framesPerSecond: Int,
+         bitrate: Int,
+         callback: VideoEncodedFrameCallback) {
         self.layer = layer
         self.queue = DispatchQueue(label: "encoder \(layer ?? "default")")
         self.width = width
@@ -47,7 +52,7 @@ class VideoEncoderWrappper {
             allocator: kCFAllocatorDefault,
             width: Int32(width),
             height: Int32(height),
-            codecType: kCMVideoCodecType_H264,
+            codecType: codecType,
             encoderSpecification: nil,
             imageBufferAttributes: nil,
             compressedDataAllocator: nil,
@@ -65,11 +70,11 @@ class VideoEncoderWrappper {
 
         // Configure the session
         VTSessionSetProperty(session, key: kVTCompressionPropertyKey_RealTime, value: kCFBooleanTrue)
-        VTSessionSetProperty(session, key: kVTCompressionPropertyKey_ProfileLevel, value: kVTProfileLevel_H264_Baseline_3_1)
-        VTSessionSetProperty(session, key: kVTCompressionPropertyKey_AverageBitRate, value: NSNumber(value: 2000000))
-        VTSessionSetProperty(session, key: kVTCompressionPropertyKey_ExpectedFrameRate, value: NSNumber(value: 15))
+        VTSessionSetProperty(session, key: kVTCompressionPropertyKey_ProfileLevel, value: profileLevelId)
+        VTSessionSetProperty(session, key: kVTCompressionPropertyKey_AverageBitRate, value: NSNumber(value: bitrate))
+        VTSessionSetProperty(session, key: kVTCompressionPropertyKey_ExpectedFrameRate, value: NSNumber(value: framesPerSecond))
         VTSessionSetProperty(session, key: kVTCompressionPropertyKey_AllowFrameReordering, value: kCFBooleanFalse)
-        VTSessionSetProperty(session, key: kVTCompressionPropertyKey_MaxKeyFrameInterval, value: NSNumber(value: 30))
+        VTSessionSetProperty(session, key: kVTCompressionPropertyKey_MaxKeyFrameInterval, value: NSNumber(value: 2 * framesPerSecond))
 
         // Prepare the session
         VTCompressionSessionPrepareToEncodeFrames(session)
