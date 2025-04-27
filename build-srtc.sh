@@ -9,6 +9,7 @@ DIR=cmake-build-srtc-mac-debug
 
 cmake \
 	-DCMAKE_BUILD_TYPE=Debug \
+	-G Ninja \
 	-S srtc \
 	-B "${DIR}"
 

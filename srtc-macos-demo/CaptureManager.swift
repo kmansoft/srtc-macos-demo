@@ -110,7 +110,7 @@ class CaptureManager {
         guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
             return nil
         }
-        
+
         // Lock the base address of the pixel buffer
         CVPixelBufferLockBaseAddress(imageBuffer, .readOnly)
         defer {

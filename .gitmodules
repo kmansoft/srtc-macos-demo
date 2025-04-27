@@ -1,3 +1,6 @@
 [submodule "srtc"]
 	path = srtc
 	url = git@github.com:kmansoft/srtc.git
+[submodule "opus"]
+	path = opus
+	url = git@github.com:xiph/opus.git
