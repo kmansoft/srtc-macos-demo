@@ -76,24 +76,30 @@ class ViewController: NSViewController {
             let codec0 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_Default)
             let codec1 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_ConstrainedBaseline)
 
-            var layerList: [MacSimulcastLayer]? = nil
-
-            if simulcastCheck.state == .on {
-                layerList = [
-                    MacSimulcastLayer(name: "low", width: 320, height: 180, framesPerSecond: 15, kilobitPerSecond: 500),
-                    MacSimulcastLayer(name: "mid", width: 640, height: 360, framesPerSecond: 15, kilobitPerSecond: 1500),
-                    MacSimulcastLayer(name: "hi", width: 1280, height: 720, framesPerSecond: 15, kilobitPerSecond: 2000)
+            var layerList = if simulcastCheck.state == .on {
+                [
+                    MacSimulcastLayer(name: "low", width: 320, height: 180, framesPerSecond: 15, kilobitPerSecond: 500)!,
+                    MacSimulcastLayer(name: "mid", width: 640, height: 360, framesPerSecond: 15, kilobitPerSecond: 1500)!,
+                    MacSimulcastLayer(name: "hi", width: 1280, height: 720, framesPerSecond: 15, kilobitPerSecond: 2000)!
                 ]
+            } else {
+                nil as [MacSimulcastLayer]?
             }
 
-            let videoConfig = MacPubVideoConfig(codecList: [codec0!, codec1!], simulcastLayerList: layerList)
+            let videoConfig = MacPubVideoConfig(codecList: [codec0!, codec1!],
+                                                simulcastLayerList: layerList)
+
+
+            let audioConfig = MacPubAudioConfig(codecList: [MacPubAudioCodec(codec: Codec_Opus, minPacketTimeMs: 20)])
 
             peerConnectionStateCallback = PeerConnectionStateCallback(owner: self)
 
             peerConnection = MacPeerConnection()
             peerConnection?.setStateCallback(peerConnectionStateCallback)
 
-            let offer = try? peerConnection?.createOffer(offerConfig, videoConfig: videoConfig)
+            let offer = try? peerConnection?.createOffer(offerConfig,
+                                                         videoConfig: videoConfig,
+                                                         audioConfig: audioConfig)
             if offer == nil {
                 peerConnection?.close()
                 peerConnection = nil
@@ -190,11 +196,15 @@ class ViewController: NSViewController {
         }
 
         if let videoSingleTrack = peerConnection?.getVideoSingleTrack() {
+            NSLog("Video single track: \(videoSingleTrack.getCodec())")
+
             if let encoder = createVideoEncoderWrapper(track: videoSingleTrack) {
                 videoEncoderWrapperList.append(encoder)
             }
         } else if let videoSimulcastTrackList = peerConnection?.getVideoSimulcastTrackList(), !videoSimulcastTrackList.isEmpty {
             for videoSimulcastTrack in videoSimulcastTrackList {
+                NSLog("Video simulcast track: \(videoSimulcastTrack.getCodec())")
+
                 if let encoder = createVideoEncoderWrapper(track: videoSimulcastTrack) {
                     videoEncoderWrapperList.append(encoder)
                 }
@@ -203,6 +213,10 @@ class ViewController: NSViewController {
             disconnect()
             showError("The SDP answer contains no video track")
             return
+        }
+
+        if let audioTrack = peerConnection?.getAudioTrack() {
+            NSLog("Audio track: \(audioTrack.getCodec())")
         }
     }
 
@@ -331,6 +345,10 @@ class ViewController: NSViewController {
         override func onCameraFrame(sampleBuffer: CMSampleBuffer, preview: CGImage?) {
             owner?.onCameraFrame(sampleBuffer: sampleBuffer, preview: preview)
         }
+
+        override func onMicrophoneFrame(sampleBuffer: CMSampleBuffer) {
+            owner?.onMicrophoneFrame(sampleBuffer: sampleBuffer)
+        }
     }
 
     private class RedirectHandler: NSObject, URLSessionTaskDelegate {
@@ -387,6 +405,20 @@ class ViewController: NSViewController {
         func onCompressedFrame(layer: String?, frame: VideoEncodedFrame) {
             owner?.onVideoCompressedFrame(layer: layer, csd: frame.csd, nalus: frame.nalus)
         }
+    }
+
+    private func onMicrophoneFrame(sampleBuffer: CMSampleBuffer) {
+        let blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer)
+        let blockBufferDataLength = CMBlockBufferGetDataLength(blockBuffer!)
+        var blockBufferData  = [UInt8](repeating: 0, count: blockBufferDataLength)
+
+        let status = CMBlockBufferCopyDataBytes(blockBuffer!,
+                                                atOffset: 0,
+                                                dataLength: blockBufferDataLength, destination: &blockBufferData)
+        guard status == noErr else { return }
+
+        let data = Data(bytes: blockBufferData, count: blockBufferDataLength)
+        peerConnection?.publishAudioFrame(data)
     }
 }
 

@@ -294,6 +294,10 @@
 				DEVELOPMENT_TEAM = 95W366MYDV;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				"HEADER_SEARCH_PATHS[arch=*]" = (
+					srtc/include,
+					opus/include,
+				);
 				INFOPLIST_FILE = "srtc-macos-demo/Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Capture the camera for sending to WebRTC";
@@ -309,9 +313,17 @@
 					"cmake-build-srtc-mac-debug",
 					"cmake-build-srtc-mac-debug/stun",
 					"cmake-build-srtc-mac-debug/openssl-lib",
+					"cmake-build-opus-mac-debug",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.4;
 				MARKETING_VERSION = 1.0;
+				"OTHER_LDFLAGS[arch=*]" = (
+					"-lsrtc",
+					"-lstun",
+					"-lssl",
+					"-lcrypto",
+					"-lopus",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.kman.srtc-macos-demo";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -335,6 +347,10 @@
 				DEVELOPMENT_TEAM = 95W366MYDV;
 				ENABLE_HARDENED_RUNTIME = NO;
 				GENERATE_INFOPLIST_FILE = YES;
+				"HEADER_SEARCH_PATHS[arch=*]" = (
+					srtc/include,
+					opus/include,
+				);
 				INFOPLIST_FILE = "srtc-macos-demo/Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Capture the camera for sending to WebRTC";

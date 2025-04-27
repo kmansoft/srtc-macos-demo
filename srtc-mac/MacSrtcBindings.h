@@ -43,21 +43,34 @@ extern const NSInteger H264_Profile_Main;
 
 @interface MacOfferConfig : NSObject
 
-- (id)initWithCName:(NSString*) cname;
+- (id) initWithCName:(NSString*) cname;
 
 @end
 
 @interface MacPubVideoCodec : NSObject
 
-- (id)initWithCodec:(NSInteger) codec
-     profileLevelId:(NSInteger) profileLevelId;
+- (id) initWithCodec:(NSInteger) codec
+      profileLevelId:(NSInteger) profileLevelId;
 
 @end
 
 @interface MacPubVideoConfig : NSObject
 
-- (id)initWithCodecList:(NSArray<MacPubVideoCodec*>*) codecList
-     simulcastLayerList:(NSArray<MacSimulcastLayer*>*) simulcastLayerList;
+- (id) initWithCodecList:(NSArray<MacPubVideoCodec*>*) codecList
+      simulcastLayerList:(NSArray<MacSimulcastLayer*>*) simulcastLayerList;
+
+@end
+
+@interface MacPubAudioCodec : NSObject
+
+- (id) initWithCodec:(NSInteger) codec
+     minPacketTimeMs:(NSInteger) minPacketTimeMs;
+
+@end
+
+@interface MacPubAudioConfig : NSObject
+
+- (id) initWithCodecList:(NSArray<MacPubAudioCodec*>*) codecList;
 
 @end
 
@@ -65,7 +78,7 @@ extern const NSInteger H264_Profile_Main;
 
 @protocol MacPeerConnectionStateCallback <NSObject>
 
-- (void)onPeerConnectionStateChanged:(NSInteger) status;
+- (void) onPeerConnectionStateChanged:(NSInteger) status;
 
 @end
 
@@ -96,15 +109,18 @@ extern const NSInteger PeerConnectionState_Closed;
 - (id)init;
 - (void)dealloc;
 
-- (void)setStateCallback:(id<MacPeerConnectionStateCallback>) callback;
-- (NSString*)createOffer:(MacOfferConfig*) config
-             videoConfig:(MacPubVideoConfig*) videoConfig
-                outError:(NSError**) outError;
-- (void)setAnswer:(NSString*) answer
-         outError:(NSError**) outError;
+- (void) setStateCallback:(id<MacPeerConnectionStateCallback>) callback;
+- (NSString*) createOffer:(MacOfferConfig*) config
+              videoConfig:(MacPubVideoConfig*) videoConfig
+              audioConfig:(MacPubAudioConfig*) audioConfig
+                 outError:(NSError**) outError;
+- (void) setAnswer:(NSString*) answer
+          outError:(NSError**) outError;
 
 - (MacTrack*) getVideoSingleTrack;
 - (NSArray<MacTrack*>*) getVideoSimulcastTrackList;
+
+- (MacTrack*) getAudioTrack;
 
 - (void) setVideoSingleCodecSpecificData:(NSArray<NSData*>*) csd;
 - (void) publishVideoSingleFrame:(NSData*) data;
@@ -113,6 +129,8 @@ extern const NSInteger PeerConnectionState_Closed;
                                         csd:(NSArray<NSData*>*) csd;
 - (void) publishVideoSimulcastFrame:(NSString*) layerName
                                data:(NSData*) data;
+
+- (void) publishAudioFrame:(NSData*) data;
 
 - (void)close;
 
