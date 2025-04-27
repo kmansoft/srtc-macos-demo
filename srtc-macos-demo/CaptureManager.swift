@@ -7,8 +7,6 @@
 
 import AVFoundation
 import CoreMedia
-import CoreGraphics
-import CoreImage
 
 class CaptureManager {
     static let shared = CaptureManager()
@@ -47,6 +45,16 @@ class CaptureManager {
         }
     }
 
+    func createCameraPreviewLayer() -> AVCaptureVideoPreviewLayer? {
+        guard let session = captureSession else { return nil }
+
+        let previewLayer = AVCaptureVideoPreviewLayer(session: session)
+        previewLayer.videoGravity = .resizeAspectFill
+        previewLayer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+
+        return previewLayer
+    }
+
     // Lock
     private let lock = NSLock()
 
@@ -62,8 +70,6 @@ class CaptureManager {
 
     private var cameraCaptureDelegate: CameraCaptureDelegate?
     private var microphoneCaptureDelegate: MicrophoneCaptureDelegate?
-
-    private let ciContext = CIContext(options: nil)
 
     private func startCaptureSession() {
         guard self.captureSession == nil else { return }
@@ -136,13 +142,11 @@ class CaptureManager {
                                didOutput sampleBuffer: CMSampleBuffer,
                                from connection: AVCaptureConnection) {
         if output == videoOutput {
-            let preview = createPixelBuffer(sampleBuffer)
-
             lock.lock()
             defer { lock.unlock() }
 
             for callback in self.callbackList {
-                callback.onCameraFrame(sampleBuffer: sampleBuffer, preview: preview)
+                callback.onCameraFrame(sampleBuffer: sampleBuffer, preview: nil)
             }
         } else if output == audioOutput {
             lock.lock()
@@ -152,26 +156,6 @@ class CaptureManager {
                 callback.onMicrophoneFrame(sampleBuffer: sampleBuffer)
             }
         }
-    }
-
-    private func createPixelBuffer(_ sampleBuffer: CMSampleBuffer) -> CGImage? {
-        guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
-            return nil
-        }
-
-        // Lock the base address of the pixel buffer
-        CVPixelBufferLockBaseAddress(imageBuffer, .readOnly)
-        defer {
-            CVPixelBufferUnlockBaseAddress(imageBuffer, .readOnly)
-        }
-
-        // Get the CoreVideo image
-        return self.createCGImage(from: imageBuffer)
-    }
-
-    private func createCGImage(from pixelBuffer: CVPixelBuffer) -> CGImage? {
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        return ciContext.createCGImage(ciImage, from: ciImage.extent)
     }
 
     private class CameraCaptureDelegate: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {

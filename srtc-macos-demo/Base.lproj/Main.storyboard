@@ -3,6 +3,7 @@
     <dependencies>
         <deployment identifier="macosx"/>
         <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="23727"/>
+        <capability name="Named colors" minToolsVersion="9.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -707,14 +708,14 @@
             <objects>
                 <viewController id="XfG-lQ-9wD" customClass="ViewController" customModule="srtc_macos_demo" customModuleProvider="target" sceneMemberID="viewController">
                     <stackView key="view" autoresizesSubviews="NO" distribution="fill" orientation="vertical" alignment="leading" horizontalStackHuggingPriority="249.99998474121094" verticalStackHuggingPriority="249.99998474121094" detachesHiddenViews="YES" id="WkC-PQ-LwN">
-                        <rect key="frame" x="0.0" y="0.0" width="650" height="620"/>
+                        <rect key="frame" x="0.0" y="0.0" width="650" height="622"/>
                         <autoresizingMask key="autoresizingMask"/>
                         <subviews>
                             <customView ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="U5E-Kf-7e7" customClass="CameraPreviewView" customModule="srtc_macos_demo" customModuleProvider="target">
-                                <rect key="frame" x="0.0" y="170" width="650" height="450"/>
+                                <rect key="frame" x="0.0" y="172" width="650" height="450"/>
                             </customView>
                             <gridView ambiguous="YES" xPlacement="leading" yPlacement="bottom" rowAlignment="none" translatesAutoresizingMaskIntoConstraints="NO" id="I8F-Dr-J4P">
-                                <rect key="frame" x="20" y="114" width="610" height="48"/>
+                                <rect key="frame" x="20" y="116" width="610" height="48"/>
                                 <rows>
                                     <gridRow id="1Wt-HH-Ey5"/>
                                     <gridRow id="LZw-Le-uiJ"/>
@@ -736,7 +737,7 @@
                                     </gridCell>
                                     <gridCell row="1Wt-HH-Ey5" column="FtP-wk-Mm7" id="LfP-0O-rUt">
                                         <textField key="contentView" focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="BdO-KW-xL8">
-                                            <rect key="frame" x="510" y="27" width="100" height="21"/>
+                                            <rect key="frame" x="46" y="27" width="100" height="21"/>
                                             <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" borderStyle="bezel" placeholderString="https://foobar.com/whip" drawsBackground="YES" id="pKh-OG-wwP">
                                                 <font key="font" usesAppearanceFont="YES"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -756,7 +757,7 @@
                                     </gridCell>
                                     <gridCell row="LZw-Le-uiJ" column="FtP-wk-Mm7" id="BGv-pr-L21">
                                         <textField key="contentView" focusRingType="none" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="7gL-Ie-WHf">
-                                            <rect key="frame" x="510" y="0.0" width="100" height="21"/>
+                                            <rect key="frame" x="46" y="0.0" width="100" height="21"/>
                                             <textFieldCell key="cell" scrollable="YES" lineBreakMode="clipping" selectable="YES" editable="YES" sendsActionOnEndEditing="YES" borderStyle="bezel" placeholderString="Something here" drawsBackground="YES" id="xhO-uW-tDh">
                                                 <font key="font" usesAppearanceFont="YES"/>
                                                 <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
@@ -767,23 +768,24 @@
                                 </gridCells>
                             </gridView>
                             <button verticalHuggingPriority="750" ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="a3m-ED-czQ">
-                                <rect key="frame" x="223" y="89" width="202" height="18"/>
-                                <buttonCell key="cell" type="check" title="Simulcast (IVS only)" bezelStyle="regularSquare" imagePosition="left" inset="2" id="WUg-LE-8Q1">
+                                <rect key="frame" x="203" y="91" width="242" height="18"/>
+                                <buttonCell key="cell" type="check" title="Simulcast (optional, for IVS only)" bezelStyle="regularSquare" imagePosition="left" inset="2" id="WUg-LE-8Q1">
                                     <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                                     <font key="font" metaFont="system"/>
                                 </buttonCell>
                                 <constraints>
-                                    <constraint firstAttribute="width" constant="200" id="dPV-rn-SgU"/>
+                                    <constraint firstAttribute="width" constant="240" id="dPV-rn-SgU"/>
                                 </constraints>
                             </button>
                             <button verticalHuggingPriority="750" ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="D8y-9C-kBl">
-                                <rect key="frame" x="208" y="55" width="234" height="32"/>
+                                <rect key="frame" x="198" y="57" width="254" height="32"/>
                                 <buttonCell key="cell" type="push" title="Connect" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="xMN-eF-985">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" metaFont="system"/>
                                 </buttonCell>
+                                <color key="bezelColor" name="AccentColor"/>
                                 <constraints>
-                                    <constraint firstAttribute="width" constant="220" id="MXb-1e-bXi"/>
+                                    <constraint firstAttribute="width" constant="240" id="MXb-1e-bXi"/>
                                 </constraints>
                             </button>
                             <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="T6s-07-YC9">
@@ -835,4 +837,9 @@
             <point key="canvasLocation" x="75" y="655"/>
         </scene>
     </scenes>
+    <resources>
+        <namedColor name="AccentColor">
+            <color red="0.0" green="0.46000000000000002" blue="0.89000000000000001" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+        </namedColor>
+    </resources>
 </document>

@@ -22,12 +22,15 @@ class ViewController: NSViewController {
 
         captureCallback = CaptureCallback(owner: self)
         captureManager.registerCallback(captureCallback!)
+
+        cameraPreviewView.setPreviewLayer(captureManager.createCameraPreviewLayer())
     }
     
     override func viewDidDisappear() {
         super.viewDidDisappear()
         
         captureManager.unregisterCallback(captureCallback!)
+        cameraPreviewView.setPreviewLayer(nil)
 
         disconnect()
     }
@@ -388,10 +391,6 @@ class ViewController: NSViewController {
 
         for encoder in videoEncoderWrapperList {
             encoder.submitFrameForCompression(sampleBuffer: sampleBuffer)
-        }
-
-        if let preview = preview {
-            cameraPreviewView.displayPreview(preview)
         }
     }
 

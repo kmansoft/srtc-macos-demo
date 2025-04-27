@@ -6,11 +6,9 @@
 //
 
 import Cocoa
-import CoreGraphics
+import AVFoundation
 
 class CameraPreviewView: NSView {
-    private var imageLayer: CALayer?
-    
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         setupLayer()
@@ -21,29 +19,28 @@ class CameraPreviewView: NSView {
         setupLayer()
     }
     
+    override func layout() {
+        super.layout()
+        previewLayer?.frame = bounds
+    }
+
+    func setPreviewLayer(_ previewLayer: AVCaptureVideoPreviewLayer?) {
+        layer?.sublayers?.removeAll()
+
+        self.previewLayer = previewLayer
+
+        if let newLayer = previewLayer {
+            layer?.addSublayer(newLayer)
+            newLayer.bounds = bounds
+        }
+    }
+
     private func setupLayer() {
         wantsLayer = true
         layer = CALayer()
         layer?.backgroundColor = NSColor.black.cgColor
-        
-        imageLayer = CALayer()
-        imageLayer?.contentsGravity = .resizeAspect
-        
-        if let imageLayer = imageLayer {
-            layer?.addSublayer(imageLayer)
-        }
     }
-    
-    override func layout() {
-        super.layout()
-        imageLayer?.frame = bounds
-    }
-    
-    func displayPreview(_ preview: CGImage) {
-        // Update the layer on the main thread
-        DispatchQueue.main.async { [weak self] in
-            self?.imageLayer?.contents = preview
-        }
-    }
+
+    private var previewLayer: AVCaptureVideoPreviewLayer?
 }
 
