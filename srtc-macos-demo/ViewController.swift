@@ -36,6 +36,7 @@ class ViewController: NSViewController {
     }
 
     @IBOutlet weak var cameraPreviewView: CameraPreviewView!
+    @IBOutlet weak var rmsLabel: NSTextField!
     @IBOutlet weak var inputGridView: NSGridView!
     @IBOutlet weak var serverTextField: NSTextField!
     @IBOutlet weak var tokenTextField: NSTextField!
@@ -424,9 +425,26 @@ class ViewController: NSViewController {
                                                 dataLength: blockBufferDataLength, destination: &blockBufferData)
         guard status == noErr else { return }
 
+        let rms = calculateRMS(data:blockBufferData)
+        DispatchQueue.main.async { [weak self] in
+            self?.rmsLabel.stringValue = String(format: "RMS = %.2f", rms)
+        }
+
         let data = Data(bytes: blockBufferData, count: blockBufferDataLength)
 
         peerConnection?.publishAudioFrame(data)
+    }
+
+    private func calculateRMS(data: [UInt8]) -> Double {
+        var sum = 0.0
+        var i = 0
+        while i < data.count {
+            let int16_value = Int16(littleEndian: Int16(data[i]) | (Int16(data[i + 1]) << 8))
+            let float_value = Double(int16_value)  / 32767.0
+            sum += float_value * float_value
+            i += 2
+        }
+        return sqrt(sum / Double(data.count))
     }
 }
 

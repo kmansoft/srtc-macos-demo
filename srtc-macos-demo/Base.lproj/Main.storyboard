@@ -713,6 +713,20 @@
                         <subviews>
                             <customView ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="U5E-Kf-7e7" customClass="CameraPreviewView" customModule="srtc_macos_demo" customModuleProvider="target">
                                 <rect key="frame" x="0.0" y="172" width="650" height="450"/>
+                                <subviews>
+                                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="c7H-8Q-oLk">
+                                        <rect key="frame" x="606" y="356" width="32" height="16"/>
+                                        <textFieldCell key="cell" lineBreakMode="clipping" title="RMS" drawsBackground="YES" id="CAx-nr-hr8">
+                                            <font key="font" usesAppearanceFont="YES"/>
+                                            <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
+                                            <color key="backgroundColor" red="0.26051741839999998" green="0.2605243921" blue="0.260520637" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                        </textFieldCell>
+                                    </textField>
+                                </subviews>
+                                <constraints>
+                                    <constraint firstAttribute="trailing" secondItem="c7H-8Q-oLk" secondAttribute="trailing" constant="12" id="VFg-j4-230"/>
+                                    <constraint firstItem="c7H-8Q-oLk" firstAttribute="top" secondItem="U5E-Kf-7e7" secondAttribute="top" constant="12" id="qzE-fO-iZ7"/>
+                                </constraints>
                             </customView>
                             <gridView ambiguous="YES" xPlacement="leading" yPlacement="bottom" rowAlignment="none" translatesAutoresizingMaskIntoConstraints="NO" id="I8F-Dr-J4P">
                                 <rect key="frame" x="20" y="116" width="610" height="48"/>
@@ -826,6 +840,7 @@
                         <outlet property="cameraPreviewView" destination="U5E-Kf-7e7" id="3Z6-n2-OM0"/>
                         <outlet property="connectButton" destination="D8y-9C-kBl" id="Pfk-ld-XPe"/>
                         <outlet property="inputGridView" destination="I8F-Dr-J4P" id="LRL-wX-N1V"/>
+                        <outlet property="rmsLabel" destination="c7H-8Q-oLk" id="fxW-wY-I6x"/>
                         <outlet property="serverTextField" destination="BdO-KW-xL8" id="xIl-ci-hEh"/>
                         <outlet property="simulcastCheck" destination="a3m-ED-czQ" id="Zci-MW-2yE"/>
                         <outlet property="statusLabel" destination="T6s-07-YC9" id="f8M-Il-CVn"/>
