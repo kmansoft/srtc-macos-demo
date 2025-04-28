@@ -64,7 +64,8 @@ extern const NSInteger H264_Profile_Main;
 @interface MacPubAudioCodec : NSObject
 
 - (id) initWithCodec:(NSInteger) codec
-     minPacketTimeMs:(NSInteger) minPacketTimeMs;
+            minptime:(NSInteger) minptime
+              stereo:(Boolean) stereo;
 
 @end
 
@@ -74,11 +75,17 @@ extern const NSInteger H264_Profile_Main;
 
 @end
 
-// Peer connection callback
+// Codec options
 
-@protocol MacPeerConnectionStateCallback <NSObject>
+@interface MacCodecOptions : NSObject
 
-- (void) onPeerConnectionStateChanged:(NSInteger) status;
+- (id) initWithProfileLeveId:(NSInteger) profileLevelId
+                    minptime:(NSInteger) minptime
+                      stereo:(Boolean) stereo;
+
+- (NSInteger) getProfileLevelId;
+- (NSInteger) getMinPTime;
+- (Boolean) getStereo;
 
 @end
 
@@ -88,11 +95,19 @@ extern const NSInteger H264_Profile_Main;
 
 - (id) initWithLayer:(MacSimulcastLayer*) simulcastLayer
                codec:(NSInteger) codec
-      profileLevelId:(NSInteger) profileLevelId;
+        codecOptions:(MacCodecOptions*) codecOptions;
 
 - (MacSimulcastLayer*) getSimulcastLayer;
 - (NSInteger) getCodec;
-- (NSInteger) getProfileLevelId;
+- (MacCodecOptions*) getCodecOptions;
+
+@end
+
+// Peer connection callback
+
+@protocol MacPeerConnectionStateCallback <NSObject>
+
+- (void) onPeerConnectionStateChanged:(NSInteger) status;
 
 @end
 

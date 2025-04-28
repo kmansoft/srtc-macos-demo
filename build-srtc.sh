@@ -23,11 +23,17 @@ then
 	exit 1
 fi
 
-LIBPATH=$(readlink -f $HOMEBREW_CELLAR/openssl@3/**/lib)
-if [ -z "$LIBPATH" ]
+if [ -e "${DIR}/openssl-lib" ]
 then
-	echo "*** Error: OpenSSL does not seem to be installed, please 'brew install openssl'"
-	exit 1
-fi
+	echo "*** OpenSSL symlink already exists"
+else
+	LIBPATH=$(readlink -f $HOMEBREW_CELLAR/openssl@3/**/lib)
+	if [ -z "$LIBPATH" ]
+	then
+		echo "*** Error: OpenSSL does not seem to be installed, please 'brew install openssl'"
+		exit 1
+	fi
 
-ln -s "$LIBPATH" "${DIR}/openssl-lib"
+	ln -s "$LIBPATH" "$DIR/openssl-lib"
+	echo "*** Created an OpenSSL symlink from $LIBPATH"
+fi

@@ -76,10 +76,7 @@ class ViewController: NSViewController {
             // Configure and the generate the offer
             let offerConfig = MacOfferConfig(cName: UUID().uuidString)
 
-            let codec0 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_Default)
-            let codec1 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_ConstrainedBaseline)
-
-            var layerList = if simulcastCheck.state == .on {
+            let layerList = if simulcastCheck.state == .on {
                 [
                     MacSimulcastLayer(name: "low", width: 320, height: 180, framesPerSecond: 15, kilobitPerSecond: 500)!,
                     MacSimulcastLayer(name: "mid", width: 640, height: 360, framesPerSecond: 15, kilobitPerSecond: 1500)!,
@@ -89,11 +86,14 @@ class ViewController: NSViewController {
                 nil as [MacSimulcastLayer]?
             }
 
+            let codec0 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_Default)
+            let codec1 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_ConstrainedBaseline)
+
             let videoConfig = MacPubVideoConfig(codecList: [codec0!, codec1!],
                                                 simulcastLayerList: layerList)
 
 
-            let audioConfig = MacPubAudioConfig(codecList: [MacPubAudioCodec(codec: Codec_Opus, minPacketTimeMs: 20)])
+            let audioConfig = MacPubAudioConfig(codecList: [MacPubAudioCodec(codec: Codec_Opus, minptime: 20, stereo: false)])
 
             peerConnectionStateCallback = PeerConnectionStateCallback(owner: self)
 
@@ -238,7 +238,8 @@ class ViewController: NSViewController {
         let profileLevelIdValue: CFString
 
         let codec = track.getCodec()
-        let profileLevelId = track.getProfileLevelId()
+        let codecOptions = track.getCodecOptions()
+        let profileLevelId = codecOptions?.getProfileLevelId() ?? 0
         switch(codec) {
         case Codec_H264:
             codecValue = kCMVideoCodecType_H264
@@ -253,8 +254,9 @@ class ViewController: NSViewController {
                 profileLevelIdValue = kVTProfileLevel_H264_Main_3_1
                 break;
             default:
-                NSLog("Invalid profile \(profileLevelId)")
-                return nil
+                NSLog("Warning: invalid profile \(profileLevelId)")
+                profileLevelIdValue = kVTProfileLevel_H264_Baseline_3_1
+                break
             }
             break
         default:
@@ -417,6 +419,7 @@ class ViewController: NSViewController {
         guard status == noErr else { return }
 
         let data = Data(bytes: blockBufferData, count: blockBufferDataLength)
+
         peerConnection?.publishAudioFrame(data)
     }
 }
