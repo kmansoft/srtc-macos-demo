@@ -713,10 +713,6 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
 
 - (void) publishAudioFrame:(NSData*) data
 {
-    char buf[256];
-    std::snprintf(buf, sizeof(buf), "Audio frame: %zu bytes", [data length]);
-    NSLog(@"%s", buf);
-
     {
         std::lock_guard lock(mOpusMutex);
 

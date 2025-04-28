@@ -150,18 +150,13 @@ class VideoEncoderWrappper {
             }
         }
 
-        var csd: [NSData]?
-
         if let naluList = extractNALUnits(from: sampleBuffer) {
+            var csd: [NSData]?
             for data in naluList {
                 let type = data[0] & 0x1F
-                NSLog("NAL unit type \(type), data length \(data.count)")
-
                 if type == 5 {
                     let (sps, pps) = getH264ParameterSets(from: sampleBuffer)
                     if let sps = sps, let pps = pps {
-                        NSLog("SPS: " + sps.hexEncodedString())
-                        NSLog("PPS: " + pps.hexEncodedString())
                         csd = [sps, pps]
                     }
                 }
