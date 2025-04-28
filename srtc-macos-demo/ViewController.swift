@@ -126,6 +126,15 @@ class ViewController: NSViewController {
         peerConnection?.close()
         peerConnection = nil
 
+        stopVideoEncoders()
+
+        isConnecting = false
+        inputGridView.isHidden = false
+        simulcastCheck.isHidden = false
+        connectButton.title = "Connect"
+    }
+
+    private func stopVideoEncoders() {
         videoEncoderWrapperLock.lock()
         defer { videoEncoderWrapperLock.unlock() }
 
@@ -133,11 +142,6 @@ class ViewController: NSViewController {
             encoder.stop()
         }
         videoEncoderWrapperList.removeAll()
-
-        isConnecting = false
-        inputGridView.isHidden = false
-        simulcastCheck.isHidden = false
-        connectButton.title = "Connect"
     }
 
     private func startSdpExchange(url: URL, token: String, offer: String) {
@@ -315,9 +319,7 @@ class ViewController: NSViewController {
         }
 
         func onPeerConnectionStateChanged(_ status: Int) {
-            DispatchQueue.main.async { [weak self] in
-                self?.owner?.onPeerConnectionStateChanged(status)
-            }
+            owner?.onPeerConnectionStateChanged(status)
         }
     }
 
@@ -338,6 +340,10 @@ class ViewController: NSViewController {
         }
 
         showStatus("PeerConnection state: \(label)")
+
+        if status == PeerConnectionState_Failed || status == PeerConnectionState_Closed {
+            stopVideoEncoders()
+        }
     }
 
     private class CaptureCallback: CaptureManager.CaptureCallback {

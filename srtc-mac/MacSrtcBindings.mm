@@ -633,11 +633,17 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     }
     NSLog(@"PeerConnection state = %s", label);
 
-    std::lock_guard lock(mMutex);
-    if (mStateCallback) {
-        const auto nsState = static_cast<NSInteger>(state);
-        [mStateCallback onPeerConnectionStateChanged: nsState];
-    }
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(self) strongSelf = weakSelf;
+        if (strongSelf) {
+            std::lock_guard lock(strongSelf->mMutex);
+            if (strongSelf->mStateCallback) {
+                const auto nsState = static_cast<NSInteger>(state);
+                [strongSelf->mStateCallback onPeerConnectionStateChanged: nsState];
+            }
+        }
+    });
 }
 
 - (void)setVideoSingleCodecSpecificData:(NSArray<NSData*>*) csd
