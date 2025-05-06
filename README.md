@@ -2,7 +2,7 @@
 
 This is a demo for "srtc" a [simple WebRTC library](https://github.com/kmansoft/srtc).
 
-It is an Mac app which captures the camera and publishes it to a WebRTC stream negotiated via WHIP.
+It is an Mac app which captures the camera and microsphone and publishes them to a WebRTC stream negotiated via WHIP.
 
 Tested with Pion and Amazon IVS (Interactive Video Service).
 
@@ -17,6 +17,8 @@ Should work with other WHIP implementations too.
 Please clone this repository with `--recurse-submodules` to bring in the srtc library and the Opus audio encoder.
 
 Build those two first by running `build-srtc.sh` and `build-opus.sh`, then open the project in XCode and build it.
+
+XCode may complain about the signing profile and force you to choose your own.
 
 #### Testing with Pion
 
