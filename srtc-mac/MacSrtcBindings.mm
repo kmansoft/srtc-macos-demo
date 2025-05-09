@@ -38,57 +38,6 @@ NSError* createNSError(const srtc::Error& error)
     return ns;
 }
 
-class HighestProfileSelector : public srtc::SdpAnswer::TrackSelector {
-public:
-    ~HighestProfileSelector() override = default;
-
-    [[nodiscard]] std::shared_ptr<srtc::Track> selectTrack(srtc::MediaType type,
-                                                           const std::vector<std::shared_ptr<srtc::Track>>& list) const override;
-
-};
-
-bool isBetter(const std::shared_ptr<srtc::Track>& best,
-              const std::shared_ptr<srtc::Track>& curr)
-{
-    if (!best) {
-        return true;
-    }
-
-    if (best->getCodec() != curr->getCodec()) {
-        return best->getCodec() < curr->getCodec();
-    }
-
-    const auto best_options = best->getCodecOptions();
-    const auto curr_options = curr->getCodecOptions();
-
-    const auto best_profileId = best_options ? best_options->profileLevelId : 0;
-    const auto curr_profileId = curr_options ? curr_options->profileLevelId : 0;
-
-    return best_profileId< curr_profileId;
-}
-
-std::shared_ptr<srtc::Track> HighestProfileSelector::selectTrack(srtc::MediaType type,
-                                                                 const std::vector<std::shared_ptr<srtc::Track>>& list) const
-{
-    if (list.empty()) {
-        return nullptr;
-    }
-
-    if (type == srtc::MediaType::Audio) {
-        return list[0];
-    } else if (type == srtc::MediaType::Video) {
-        std::shared_ptr<srtc::Track> best;
-        for (const auto& curr : list) {
-            if (isBetter(best, curr)) {
-                best = curr;
-            }
-        }
-        return best;
-    } else {
-        return nullptr;
-    }
-}
-
 MacCodecOptions* newCodecOptions(const std::shared_ptr<srtc::Track::CodecOptions>& codecOptions)
 {
     if (!codecOptions) {
@@ -242,7 +191,7 @@ const NSInteger H264_Profile_Main = 0x4d001f;
                 const auto codec = [codecList objectAtIndex:i];
                 mCodecList.push_back({
                     .codec = [codec getCodec],
-                    .profileLevelId = [codec getProfileLevelId]
+                    .profile_level_id = [codec getProfileLevelId]
                 });
             }
         }
@@ -253,8 +202,8 @@ const NSInteger H264_Profile_Main = 0x4d001f;
                     .name = [[layer getName] UTF8String],
                     .width = static_cast<uint16_t>([layer getWidth]),
                     .height = static_cast<uint16_t>([layer getHeight]),
-                    .framesPerSecond = static_cast<uint16_t>([layer getFramesPerSecond]),
-                    .kilobitPerSecond = static_cast<uint32_t>([layer getKilobitsPerSecond])
+                    .frames_per_second = static_cast<uint16_t>([layer getFramesPerSecond]),
+                    .kilobits_per_second = static_cast<uint32_t>([layer getKilobitsPerSecond])
                 });
             }
         }
@@ -506,18 +455,18 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     srtc::optional<srtc::PubVideoConfig> srtcVideoConfig;
     if (videoConfig) {
         srtcVideoConfig = srtc::PubVideoConfig {
-            .codecList = [videoConfig getCodecList],
-            .simulcastLayerList = [videoConfig getSimulcastLayerList]
+            .codec_list = [videoConfig getCodecList],
+            .simulcast_layer_list = [videoConfig getSimulcastLayerList]
         };
     }
     srtc::optional<srtc::PubAudioConfig> srtcAudioConfig;
     if (audioConfig) {
         srtcAudioConfig = srtc::PubAudioConfig {
-            .codecList = [audioConfig getCodecList]
+            .codec_list = [audioConfig getCodecList]
         };
     }
 
-    mOffer = std::make_shared<srtc::SdpOffer>(srtcOfferConfig, srtcVideoConfig, srtcAudioConfig);
+    mOffer = mConn->createPublishSdpOffer(srtcOfferConfig, srtcVideoConfig, srtcAudioConfig);
 
     const auto [sdp, error1] = mOffer->generate();
     if (error1.isError()) {
@@ -540,10 +489,10 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
 {
     std::lock_guard lock(mMutex);
 
-    const auto selector = std::make_shared<HighestProfileSelector>();
+    const auto selector = std::make_shared<srtc::HighestTrackSelector>();
 
     const auto answerStr = [answer UTF8String];
-    const auto [sdp, error1] = srtc::SdpAnswer::parse(mOffer, answerStr, selector);
+    const auto [sdp, error1] = mConn->parsePublishSdpAnswer(mOffer, answerStr, selector);
     if (error1.isError()) {
         *outError = createNSError(error1);
         return;
@@ -571,8 +520,8 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
             const auto layer = [[MacSimulcastLayer alloc] initWithName:[[NSString alloc]initWithUTF8String:trackLayer->name.c_str()]
                                                                  width:static_cast<NSInteger>(trackLayer->width)
                                                                 height:static_cast<NSInteger>(trackLayer->height)
-                                                       framesPerSecond:static_cast<NSInteger>(trackLayer->framesPerSecond)
-                                                      kilobitPerSecond:static_cast<NSInteger>(trackLayer->kilobitPerSecond)];
+                                                       framesPerSecond:static_cast<NSInteger>(trackLayer->frames_per_second)
+                                                      kilobitPerSecond:static_cast<NSInteger>(trackLayer->kilobits_per_second)];
 
             const auto codec = static_cast<NSInteger>(videoSimulcastTrack->getCodec());
             const auto codecOptions = videoSimulcastTrack->getCodecOptions();
