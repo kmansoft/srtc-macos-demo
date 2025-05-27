@@ -51,6 +51,7 @@ class ViewController: NSViewController {
     private var isConnecting = false
     private var peerConnection: MacPeerConnection?
     private var peerConnectionStateCallback: MacPeerConnectionStateCallback?
+    private var peerConnectionStatsCallback: MacPublishConnectionStatsCallback?
 
     private let videoEncoderWrapperLock = NSLock()
     private var videoEncoderWrapperList: [VideoEncoderWrappper] = []
@@ -80,8 +81,8 @@ class ViewController: NSViewController {
             let layerList = if simulcastCheck.state == .on {
                 [
                     MacSimulcastLayer(name: "low", width: 320, height: 180, framesPerSecond: 15, kilobitPerSecond: 500)!,
-                    MacSimulcastLayer(name: "mid", width: 640, height: 360, framesPerSecond: 15, kilobitPerSecond: 1500)!,
-                    MacSimulcastLayer(name: "hi", width: 1280, height: 720, framesPerSecond: 15, kilobitPerSecond: 2000)!
+                    MacSimulcastLayer(name: "mid", width: 640, height: 360, framesPerSecond: 15, kilobitPerSecond: 1000)!,
+                    MacSimulcastLayer(name: "hi", width: 1280, height: 720, framesPerSecond: 15, kilobitPerSecond: 1500)!
                 ]
             } else {
                 nil as [MacSimulcastLayer]?
@@ -97,9 +98,11 @@ class ViewController: NSViewController {
             let audioConfig = MacPubAudioConfig(codecList: [MacPubAudioCodec(codec: Codec_Opus, minptime: 20, stereo: false)])
 
             peerConnectionStateCallback = PeerConnectionStateCallback(owner: self)
+            peerConnectionStatsCallback = PeerConnectionStatsCallback(owner: self)
 
             peerConnection = MacPeerConnection()
             peerConnection?.setStateCallback(peerConnectionStateCallback)
+            peerConnection?.setStatsCallback(peerConnectionStatsCallback)
 
             let offer = try? peerConnection?.createOffer(offerConfig,
                                                          videoConfig: videoConfig,
@@ -231,7 +234,7 @@ class ViewController: NSViewController {
     private func createVideoEncoderWrapper(track: MacTrack) -> VideoEncoderWrappper? {
         var width = 1280
         var height = 720
-        var bitrate = 2000
+        var bitrate = 1500
 
         if let layer = track.getSimulcastLayer() {
             width = layer.getWidth()
@@ -324,6 +327,18 @@ class ViewController: NSViewController {
         }
     }
 
+    private class PeerConnectionStatsCallback: NSObject, MacPublishConnectionStatsCallback {
+        private weak var owner: ViewController?
+
+        init(owner: ViewController) {
+            self.owner = owner
+        }
+
+        func onPublishConnectionStats(_ stats: MacPublishConnectionStats!) {
+            owner?.onPeerConnectionStatsChanged(stats)
+        }
+    }
+
     private func onPeerConnectionStateChanged(_ status: Int) {
         let label = switch status {
         case PeerConnectionState_Inactive:
@@ -345,6 +360,12 @@ class ViewController: NSViewController {
         if status == PeerConnectionState_Failed || status == PeerConnectionState_Closed {
             stopVideoEncoders()
         }
+    }
+
+    private func onPeerConnectionStatsChanged(_ stats: MacPublishConnectionStats)
+    {
+        let message = String(format: "Stats: bw = %.2f kbit/s, rtt = %.2f ms", stats.bandwidthActualKbitSec, stats.rttMs)
+        showStatus(message)
     }
 
     private class CaptureCallback: CaptureManager.CaptureCallback {

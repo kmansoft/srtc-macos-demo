@@ -379,6 +379,26 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 
 @end
 
+// Publish connection stats
+
+@implementation MacPublishConnectionStats
+
+- (id)initWithStats:(const srtc::PublishConnectionStats&) stats
+{
+    self = [super init];
+    if (self) {
+        self.packetLossPercent = stats.packets_lost_percent;
+        self.rttMs = stats.rtt_ms;
+        self.bandwidthActualKbitSec = stats.bandwidth_actual_kbit_per_second;
+        self.bandwidthSuggestedKbitSec = stats.bandwidth_suggested_kbit_per_second;
+    }
+
+    return self;
+}
+
+@end
+
+
 // Peer connection
 
 const NSInteger PeerConnectionState_Inactive = static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Inactive);
@@ -397,6 +417,7 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     std::shared_ptr<srtc::SdpOffer> mOffer;
 
     id<MacPeerConnectionStateCallback> mStateCallback;
+    id<MacPublishConnectionStatsCallback> mStatsCallback;
 
     MacTrack* mVideoSingleTrack;
     NSArray<MacTrack*>* mVideoSimulcastTrackList;
@@ -420,10 +441,17 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
         mOpusEncoder = nullptr;
 
         __weak typeof(self) weakSelf = self;
+
         mConn->setConnectionStateListener([weakSelf](const srtc::PeerConnection::ConnectionState& state) {
             __strong typeof(self) strongSelf = weakSelf;
             if (strongSelf) {
                 [strongSelf onPeerConnectionState:state];
+            }
+        });
+        mConn->setPublishConnectionStatsListener([weakSelf](const srtc::PublishConnectionStats& stats) {
+            __strong typeof(self) strongSelf = weakSelf;
+            if (strongSelf) {
+                [strongSelf onPublishConnectionStats:stats];
             }
         });
     }
@@ -434,6 +462,11 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
 - (void)setStateCallback:(id<MacPeerConnectionStateCallback>) callback
 {
     mStateCallback = callback;
+}
+
+- (void) setStatsCallback:(id<MacPublishConnectionStatsCallback>) callback
+{
+    mStatsCallback = callback;
 }
 
 - (void)dealloc
@@ -450,16 +483,17 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     std::lock_guard lock(mMutex);
 
     srtc::OfferConfig srtcOfferConfig {
-        .cname = [config getCName]
+        .cname = [config getCName],
+        .enable_bwe = true
     };
-    srtc::optional<srtc::PubVideoConfig> srtcVideoConfig;
+    std::optional<srtc::PubVideoConfig> srtcVideoConfig;
     if (videoConfig) {
         srtcVideoConfig = srtc::PubVideoConfig {
             .codec_list = [videoConfig getCodecList],
             .simulcast_layer_list = [videoConfig getSimulcastLayerList]
         };
     }
-    srtc::optional<srtc::PubAudioConfig> srtcAudioConfig;
+    std::optional<srtc::PubAudioConfig> srtcAudioConfig;
     if (audioConfig) {
         srtcAudioConfig = srtc::PubAudioConfig {
             .codec_list = [audioConfig getCodecList]
@@ -590,6 +624,22 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
             if (strongSelf->mStateCallback) {
                 const auto nsState = static_cast<NSInteger>(state);
                 [strongSelf->mStateCallback onPeerConnectionStateChanged: nsState];
+            }
+        }
+    });
+}
+
+- (void)onPublishConnectionStats:(const srtc::PublishConnectionStats&)  stats
+{
+    const auto macStats = [[MacPublishConnectionStats alloc] initWithStats: stats];
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(self) strongSelf = weakSelf;
+        if (strongSelf) {
+            std::lock_guard lock(strongSelf->mMutex);
+            if (strongSelf->mStatsCallback) {
+                [strongSelf->mStatsCallback onPublishConnectionStats: macStats];
             }
         }
     });

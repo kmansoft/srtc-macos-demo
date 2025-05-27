@@ -111,6 +111,25 @@ extern const NSInteger H264_Profile_Main;
 
 @end
 
+// Peer connection stats
+
+@interface MacPublishConnectionStats : NSObject
+
+@property Float32 packetLossPercent;
+@property Float32 rttMs;
+@property Float32 bandwidthActualKbitSec;
+@property Float32 bandwidthSuggestedKbitSec;
+
+@end
+
+// Peer connection stats callback
+
+@protocol MacPublishConnectionStatsCallback <NSObject>
+
+- (void) onPublishConnectionStats:(MacPublishConnectionStats*) stats;
+
+@end
+
 // Peer connection
 
 extern const NSInteger PeerConnectionState_Inactive;
@@ -125,6 +144,8 @@ extern const NSInteger PeerConnectionState_Closed;
 - (void)dealloc;
 
 - (void) setStateCallback:(id<MacPeerConnectionStateCallback>) callback;
+- (void) setStatsCallback:(id<MacPublishConnectionStatsCallback>) callback;
+
 - (NSString*) createOffer:(MacOfferConfig*) config
               videoConfig:(MacPubVideoConfig*) videoConfig
               audioConfig:(MacPubAudioConfig*) audioConfig
