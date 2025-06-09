@@ -364,7 +364,10 @@ class ViewController: NSViewController {
 
     private func onPeerConnectionStatsChanged(_ stats: MacPublishConnectionStats)
     {
-        let message = String(format: "Stats: bw = %.2f kbit/s, rtt = %.2f ms", stats.bandwidthActualKbitSec, stats.rttMs)
+        let message = String(format: "Stats: act %.2f kb/s, sugg %.2f kb/s, rtt = %.2f ms",
+                             stats.bandwidthActualKbitSec,
+                             stats.bandwidthSuggestedKbitSec,
+                             stats.rttMs)
         showStatus(message)
     }
 
