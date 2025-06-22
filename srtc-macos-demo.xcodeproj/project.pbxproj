@@ -311,7 +311,7 @@
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"cmake-build-srtc-mac-debug",
-					"cmake-build-srtc-mac-debug/stun",
+					"cmake-build-srtc-mac-debug/src/stun",
 					"cmake-build-srtc-mac-debug/openssl-lib",
 					"cmake-build-opus-mac-debug",
 				);
