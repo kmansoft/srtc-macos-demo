@@ -56,6 +56,8 @@ class ViewController: NSViewController {
     private let videoEncoderWrapperLock = NSLock()
     private var videoEncoderWrapperList: [VideoEncoderWrappper] = []
 
+    private var publishStartDate: Date?
+
     @IBAction private func connectButtonAction(_ sender: NSButton) {
         let server = serverTextField.stringValue
         let token = tokenTextField.stringValue
@@ -197,6 +199,9 @@ class ViewController: NSViewController {
 
     private func onSdpAnswer(_ answer: String) {
         print("SDP answer: \(answer)")
+
+        publishStartDate = Date()
+
         var error: NSError?
         peerConnection?.setAnswer(answer, outError: &error)
         
@@ -340,6 +345,17 @@ class ViewController: NSViewController {
     }
 
     private func onPeerConnectionStateChanged(_ status: Int) {
+        if status == PeerConnectionState_Connected {
+            if let start = publishStartDate  {
+                let elapsed = Date().timeIntervalSince(start)
+                let millis = Int(elapsed * 1000.0)
+
+                showStatus("PeerConnection state: connected in \(millis) ms")
+
+                return
+            }
+        }
+
         let label = switch status {
         case PeerConnectionState_Inactive:
             "inactive"
