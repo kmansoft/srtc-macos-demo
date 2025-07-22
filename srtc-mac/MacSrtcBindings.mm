@@ -414,7 +414,6 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
 
     std::mutex mMutex;
     std::unique_ptr<srtc::PeerConnection> mConn;
-    std::shared_ptr<srtc::SdpOffer> mOffer;
 
     id<MacPeerConnectionStateCallback> mStateCallback;
     id<MacPublishConnectionStatsCallback> mStatsCallback;
@@ -436,7 +435,7 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     self = [super init];
     if (self) {
         mIsClosing = false;
-        mConn = std::make_unique<srtc::PeerConnection>();
+        mConn = std::make_unique<srtc::PeerConnection>(srtc::Direction::Publish);
         mOpusQueue = dispatch_queue_create("srtc.opus", DISPATCH_QUEUE_SERIAL);
         mOpusEncoder = nullptr;
 
@@ -482,7 +481,7 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
 {
     std::lock_guard lock(mMutex);
 
-    srtc::OfferConfig srtcOfferConfig {
+    srtc::PubOfferConfig srtcOfferConfig {
         .cname = [config getCName],
         .enable_bwe = true
     };
@@ -500,17 +499,21 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
         };
     }
 
-    mOffer = mConn->createPublishSdpOffer(srtcOfferConfig, srtcVideoConfig, srtcAudioConfig);
-
-    const auto [sdp, error1] = mOffer->generate();
+    const auto [offer, error1] = mConn->createPublishOffer(srtcOfferConfig, srtcVideoConfig, srtcAudioConfig);
     if (error1.isError()) {
         *outError = createNSError(error1);
         return nil;
     }
 
-    const auto error2 = mConn->setSdpOffer(mOffer);
+    const auto [sdp, error2] = offer->generate();
     if (error2.isError()) {
         *outError = createNSError(error2);
+        return nil;
+    }
+
+    const auto error3 = mConn->setOffer(offer);
+    if (error3.isError()) {
+        *outError = createNSError(error3);
         return nil;
     }
 
@@ -523,16 +526,17 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
 {
     std::lock_guard lock(mMutex);
 
+    const auto offer = mConn->getOffer();
     const auto selector = std::make_shared<srtc::HighestTrackSelector>();
 
     const auto answerStr = [answer UTF8String];
-    const auto [sdp, error1] = mConn->parsePublishSdpAnswer(mOffer, answerStr, selector);
+    const auto [sdp, error1] = mConn->parsePublishAnswer(offer, answerStr, selector);
     if (error1.isError()) {
         *outError = createNSError(error1);
         return;
     }
 
-    const auto error2 = mConn->setSdpAnswer(sdp);
+    const auto error2 = mConn->setAnswer(sdp);
     if (error2.isError()) {
         *outError = createNSError(error2);
         return;
@@ -765,7 +769,7 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     {
         std::lock_guard lock(mMutex);
         if (mConn) {
-            const auto answer = mConn->getSdpAnswer();
+            const auto answer = mConn->getAnswer();
             if (answer) {
                 const auto track = answer->getAudioTrack();
                 if (track) {
