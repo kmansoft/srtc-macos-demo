@@ -80,9 +80,27 @@ class CaptureManager {
         cameraCaptureDelegate = CameraCaptureDelegate(owner: self)
         microphoneCaptureDelegate = MicrophoneCaptureDelegate(owner: self)
 
+        // Get the list of external video devices
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [
+                .builtInWideAngleCamera,
+                .externalUnknown
+            ],
+            mediaType: .video,
+            position: .unspecified
+        )
+
+        var videoDevice = discoverySession.devices.first { device in
+            device.deviceType == .externalUnknown
+        }
+
+        if videoDevice == nil {
+            videoDevice = AVCaptureDevice.default(for: .video)
+        }
+
         // Video
         if
-            let videoDevice = AVCaptureDevice.default(for: .video),
+            let videoDevice = videoDevice,
             let videoInput = try? AVCaptureDeviceInput(device: videoDevice)
         {
             if captureSession.canAddInput(videoInput) {
