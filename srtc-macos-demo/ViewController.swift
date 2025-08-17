@@ -97,7 +97,7 @@ class ViewController: NSViewController {
                                                 simulcastLayerList: layerList)
 
 
-            let audioConfig = MacPubAudioConfig(codecList: [MacPubAudioCodec(codec: Codec_Opus, minptime: 20, stereo: false)])
+            let audioConfig = MacPubAudioConfig(codecList: [MacPubAudioCodec(codec: Codec_Opus, minptime: 10, stereo: false)])
 
             peerConnectionStateCallback = PeerConnectionStateCallback(owner: self)
             peerConnectionStatsCallback = PeerConnectionStatsCallback(owner: self)

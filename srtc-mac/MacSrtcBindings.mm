@@ -13,6 +13,7 @@
 #include "srtc/sdp_answer.h"
 #include "srtc/peer_connection.h"
 #include "srtc/track.h"
+#include "srtc/logging.h"
 
 #include "opus.h"
 #include "opus_defines.h"
@@ -432,6 +433,8 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
 {
     NSLog(@"MacPeerConnection init");
 
+    srtc::setLogLevel(SRTC_LOG_W);
+
     self = [super init];
     if (self) {
         mIsClosing = false;
@@ -763,7 +766,7 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
         return;
     }
 
-    int minptime = 20;
+    int minptime = 10;
     int channels = 1;
 
     {
@@ -784,6 +787,8 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
             }
         }
     }
+
+    NSLog(@"minptime = %d", minptime);
 
     std::list<srtc::ByteBuffer> outputList;
 

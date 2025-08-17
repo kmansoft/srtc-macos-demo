@@ -131,25 +131,6 @@ class VideoEncoderWrappper {
     }
 
     private func onCompressedFrame(_ sampleBuffer: CMSampleBuffer) {
-        if let dataBuffer = CMSampleBufferGetDataBuffer(sampleBuffer) {
-            var totalLength: Int = 0
-            var dataPointer: UnsafeMutablePointer<Int8>?
-
-            let status = CMBlockBufferGetDataPointer(
-                dataBuffer,
-                atOffset: 0,
-                lengthAtOffsetOut: nil,
-                totalLengthOut: &totalLength,
-                dataPointerOut: &dataPointer
-            )
-
-            if status == noErr, totalLength > 0, let dataPointer = dataPointer {
-                let data = NSData(bytes: dataPointer, length: min(totalLength, 20))
-                let hex = data.hexEncodedString()
-                NSLog("Encoded frame \(totalLength) bytes, hex = \(hex)")
-            }
-        }
-
         if let naluList = extractNALUnits(from: sampleBuffer) {
             var csd: [NSData]?
             for data in naluList {
@@ -165,7 +146,6 @@ class VideoEncoderWrappper {
             let frame = VideoEncodedFrame(csd: csd, nalus: naluList)
             callback?.onCompressedFrame(layer: layer, frame: frame)
         }
-
     }
 }
 
