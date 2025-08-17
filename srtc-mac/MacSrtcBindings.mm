@@ -28,11 +28,11 @@ const uint8_t kAnnexBPrefix[4] = { 0, 0, 0, 1 };
 NSError* createNSError(const srtc::Error& error)
 {
     NSDictionary *userInfo = @{
-        NSLocalizedDescriptionKey: [[NSString alloc] initWithUTF8String:error.mMessage.c_str()]
+        NSLocalizedDescriptionKey: [[NSString alloc] initWithUTF8String:error.message.c_str()]
     };
 
     NSError *ns = [NSError errorWithDomain:@"srtc"
-                                      code:static_cast<NSInteger>(error.mCode)
+                                      code:static_cast<NSInteger>(error.code)
                                   userInfo:userInfo];
 
     return ns;
