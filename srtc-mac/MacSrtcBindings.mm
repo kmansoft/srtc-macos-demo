@@ -427,6 +427,7 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     std::mutex mOpusMutex;
     std::vector<uint8_t> mOpusInputBuffer;
     OpusEncoder* mOpusEncoder;
+    int64_t mOpusPts;
 }
 
 - (id)init
@@ -441,6 +442,7 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
         mConn = std::make_unique<srtc::PeerConnection>(srtc::Direction::Publish);
         mOpusQueue = dispatch_queue_create("srtc.opus", DISPATCH_QUEUE_SERIAL);
         mOpusEncoder = nullptr;
+        mOpusPts = 0;
 
         __weak typeof(self) weakSelf = self;
 
@@ -679,7 +681,8 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
         buf.append(kAnnexBPrefix, sizeof(kAnnexBPrefix));
         buf.append(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
 
-        conn->publishVideoSingleFrame(std::move(buf));
+        const auto pts_usec = srtc::getStableTimeMicros();
+        conn->publishVideoSingleFrame(pts_usec, std::move(buf));
     }
 }
 
@@ -713,7 +716,8 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
         buf.append(kAnnexBPrefix, sizeof(kAnnexBPrefix));
         buf.append(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
 
-        conn->publishVideoSimulcastFrame([layerName UTF8String], std::move(buf));
+        const auto pts_usec = srtc::getStableTimeMicros();
+        conn->publishVideoSimulcastFrame(pts_usec, [layerName UTF8String], std::move(buf));
     }
 }
 
@@ -760,6 +764,11 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     }
 }
 
+struct OpusFrame {
+    int64_t pts_usec;
+    srtc::ByteBuffer buf;
+};
+
 - (void) flushOpusQueue
 {
     if (mIsClosing) {
@@ -788,9 +797,7 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
         }
     }
 
-    NSLog(@"minptime = %d", minptime);
-
-    std::list<srtc::ByteBuffer> outputList;
+    std::list<OpusFrame> outputList;
 
     {
         constexpr auto kOpusSampleRate = 48000;
@@ -817,6 +824,11 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
             const auto samples = (kOpusSampleRate * minptime) / 1000;
             const auto size = channels * sizeof(uint16_t) * samples;
 
+            const auto now = srtc::getStableTimeMicros();
+            if (mOpusPts == 0 || now - mOpusPts >= 100 * 1000) {
+                mOpusPts = now;
+            }
+
             while (mOpusInputBuffer.size() >= size) {
                 srtc::ByteBuffer output { 4000 };
                 const auto encodedSize = opus_encode(mOpusEncoder,
@@ -827,15 +839,13 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
 
                 if (encodedSize > 0) {
                     output.resize(static_cast<size_t>(encodedSize));
-                    outputList.push_back(std::move(output));
+                    outputList.push_back({ mOpusPts, std::move(output) });
 
-                    char msg[256];
-                    std::snprintf(msg, sizeof(msg),
-                                  "Encoded %zu bytes into %d Opus bytes", size, encodedSize);
-                    NSLog(@"%s", msg);
+                    NSLog(@"Encoded %zu bytes into %d Opus bytes", size, encodedSize);
                 }
 
                 mOpusInputBuffer.erase(mOpusInputBuffer.begin(), mOpusInputBuffer.begin() + size);
+                mOpusPts += minptime * 1000;
             }
         }
     }
@@ -845,9 +855,10 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
 
         if (mConn) {
             while (!outputList.empty()) {
-                auto buf = std::move(outputList.front());
+                auto front = std::move(outputList.front());
                 outputList.erase(outputList.begin());
-                mConn->publishAudioFrame(std::move(buf));
+
+                mConn->publishAudioFrame(front.pts_usec, std::move(front.buf));
             }
         }
     }
