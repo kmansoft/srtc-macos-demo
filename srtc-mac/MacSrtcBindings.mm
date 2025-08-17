@@ -781,12 +781,9 @@ struct OpusFrame {
     {
         std::lock_guard lock(mMutex);
         if (mConn) {
-            const auto answer = mConn->getAnswer();
-            if (answer) {
-                const auto track = answer->getAudioTrack();
-                if (track) {
-                    const auto options = track->getCodecOptions();
-                    if (options) {
+            if (const auto answer = mConn->getAnswer()) {
+                if (const auto track = answer->getAudioTrack()) {
+                    if (const auto options = track->getCodecOptions()) {
                         minptime = options->minptime;
                         if (options->stereo) {
                             channels = 2;
