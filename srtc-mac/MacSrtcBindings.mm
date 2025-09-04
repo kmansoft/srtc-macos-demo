@@ -55,6 +55,7 @@ MacCodecOptions* newCodecOptions(const std::shared_ptr<srtc::Track::CodecOptions
 // Codecs
 
 const NSInteger Codec_H264 = static_cast<NSInteger>(srtc::Codec::H264);
+const NSInteger Codec_H265 = static_cast<NSInteger>(srtc::Codec::H265);
 const NSInteger Codec_Opus = static_cast<NSInteger>(srtc::Codec::Opus);
 
 const NSInteger H264_Profile_Default = 0x42001f;
@@ -676,10 +677,7 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
 {
     std::lock_guard lock(mMutex);
     if (const auto& conn = mConn) {
-        srtc::ByteBuffer buf;
-
-        buf.append(kAnnexBPrefix, sizeof(kAnnexBPrefix));
-        buf.append(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
+        srtc::ByteBuffer buf(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
 
         const auto pts_usec = srtc::getStableTimeMicros();
         conn->publishVideoSingleFrame(pts_usec, std::move(buf));
@@ -695,9 +693,7 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
 
         for (NSUInteger i = 0; i < [csd count]; i += 1) {
             const auto data = [csd objectAtIndex:i];
-            srtc::ByteBuffer buf;
-            buf.append(kAnnexBPrefix, sizeof(kAnnexBPrefix));
-            buf.append(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
+            srtc::ByteBuffer buf(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
             list.push_back(std::move(buf));
         }
 
@@ -711,10 +707,7 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
 {
     std::lock_guard lock(mMutex);
     if (const auto& conn = mConn) {
-        srtc::ByteBuffer buf;
-
-        buf.append(kAnnexBPrefix, sizeof(kAnnexBPrefix));
-        buf.append(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
+        srtc::ByteBuffer buf(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
 
         const auto pts_usec = srtc::getStableTimeMicros();
         conn->publishVideoSimulcastFrame(pts_usec, [layerName UTF8String], std::move(buf));

@@ -15,6 +15,7 @@
 // Codecs
 
 extern const NSInteger Codec_H264;
+extern const NSInteger Codec_H265;
 extern const NSInteger Codec_Opus;
 
 extern const NSInteger H264_Profile_Default;

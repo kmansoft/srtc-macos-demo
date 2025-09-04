@@ -714,7 +714,7 @@
                             <customView ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="U5E-Kf-7e7" customClass="CameraPreviewView" customModule="srtc_macos_demo" customModuleProvider="target">
                                 <rect key="frame" x="0.0" y="172" width="650" height="450"/>
                                 <subviews>
-                                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="c7H-8Q-oLk">
+                                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" ambiguous="YES" translatesAutoresizingMaskIntoConstraints="NO" id="c7H-8Q-oLk" userLabel="RMS label">
                                         <rect key="frame" x="606" y="356" width="32" height="16"/>
                                         <textFieldCell key="cell" lineBreakMode="clipping" title="RMS" drawsBackground="YES" id="CAx-nr-hr8">
                                             <font key="font" usesAppearanceFont="YES"/>
@@ -722,10 +722,23 @@
                                             <color key="backgroundColor" red="0.26051741839999998" green="0.2605243921" blue="0.260520637" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                         </textFieldCell>
                                     </textField>
+                                    <textField focusRingType="none" horizontalHuggingPriority="251" verticalHuggingPriority="750" ambiguous="YES" misplaced="YES" translatesAutoresizingMaskIntoConstraints="NO" id="BM4-yt-fvy" userLabel="Codec label">
+                                        <rect key="frame" x="14" y="356" width="44" height="16"/>
+                                        <textFieldCell key="cell" lineBreakMode="clipping" title="Codec" drawsBackground="YES" id="TZv-zP-sAj" userLabel="Codec">
+                                            <font key="font" usesAppearanceFont="YES"/>
+                                            <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
+                                            <color key="backgroundColor" red="0.26051741839999998" green="0.2605243921" blue="0.260520637" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                        </textFieldCell>
+                                        <connections>
+                                            <outlet property="delegate" destination="U5E-Kf-7e7" id="U51-WP-st0"/>
+                                        </connections>
+                                    </textField>
                                 </subviews>
                                 <constraints>
+                                    <constraint firstItem="BM4-yt-fvy" firstAttribute="leading" secondItem="U5E-Kf-7e7" secondAttribute="leading" constant="12" id="KBi-1R-jfq"/>
                                     <constraint firstAttribute="trailing" secondItem="c7H-8Q-oLk" secondAttribute="trailing" constant="12" id="VFg-j4-230"/>
                                     <constraint firstItem="c7H-8Q-oLk" firstAttribute="top" secondItem="U5E-Kf-7e7" secondAttribute="top" constant="12" id="qzE-fO-iZ7"/>
+                                    <constraint firstItem="BM4-yt-fvy" firstAttribute="top" secondItem="U5E-Kf-7e7" secondAttribute="top" constant="12" id="wkw-Vy-bmU"/>
                                 </constraints>
                             </customView>
                             <gridView ambiguous="YES" xPlacement="leading" yPlacement="bottom" rowAlignment="none" translatesAutoresizingMaskIntoConstraints="NO" id="I8F-Dr-J4P">
@@ -838,6 +851,7 @@
                     </stackView>
                     <connections>
                         <outlet property="cameraPreviewView" destination="U5E-Kf-7e7" id="3Z6-n2-OM0"/>
+                        <outlet property="codecLabel" destination="BM4-yt-fvy" id="Rs2-kZ-z2y"/>
                         <outlet property="connectButton" destination="D8y-9C-kBl" id="Pfk-ld-XPe"/>
                         <outlet property="inputGridView" destination="I8F-Dr-J4P" id="LRL-wX-N1V"/>
                         <outlet property="rmsLabel" destination="c7H-8Q-oLk" id="fxW-wY-I6x"/>

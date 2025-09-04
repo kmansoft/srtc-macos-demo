@@ -12,11 +12,11 @@ import VideoToolbox
 
 class VideoEncodedFrame {
     let csd: [NSData]?
-    let nalus: [NSData]
+    let data: NSData
 
-    init (csd: [NSData]?, nalus: [NSData]) {
+    init (csd: [NSData]?, data: NSData) {
         self.csd = csd
-        self.nalus = nalus
+        self.data = data
     }
 }
 
@@ -26,6 +26,7 @@ protocol VideoEncodedFrameCallback {
 
 class VideoEncoderWrappper {
 
+    private let codec: CMVideoCodecType
     private let layer: String?
     private let queue: DispatchQueue
     private let width: Int
@@ -35,12 +36,15 @@ class VideoEncoderWrappper {
     private var compressionSession: VTCompressionSession?
     private var frameCount: Int = 0
 
+    private let kAnnexBHeader: [UInt8] = [0x00, 0x00, 0x00, 0x01]
+
     init(layer: String?, width: Int, height: Int,
          codecType: CMVideoCodecType,
          profileLevelId: CFString,
          framesPerSecond: Int,
          bitrate: Int,
          callback: VideoEncodedFrameCallback) {
+        self.codec = codecType
         self.layer = layer
         self.queue = DispatchQueue(label: "encoder \(layer ?? "default")")
         self.width = width
@@ -131,21 +135,55 @@ class VideoEncoderWrappper {
     }
 
     private func onCompressedFrame(_ sampleBuffer: CMSampleBuffer) {
-        if let naluList = extractNALUnits(from: sampleBuffer) {
-            var csd: [NSData]?
-            for data in naluList {
-                let type = data[0] & 0x1F
-                if type == 5 {
-                    let (sps, pps) = getH264ParameterSets(from: sampleBuffer)
-                    if let sps = sps, let pps = pps {
-                        csd = [sps, pps]
+        if codec == kCMVideoCodecType_H264 || codec == kCMVideoCodecType_HEVC {
+            if let naluList = extractNALUnits(from: sampleBuffer) {
+                let data = NSMutableData()
+                for nalu in naluList {
+                    data.append(Data(kAnnexBHeader))
+                    data.append(nalu as Data)
+                }
+
+                var csd: [NSData]?
+                for data in naluList {
+                    if codec == kCMVideoCodecType_H264 {
+                        let type = data[0] & 0x1F
+                        if type == 5 {
+                            let csdDataList = getH264ParameterSets(from: sampleBuffer)
+                            csd = convertCSDList(csdDataList)
+                        }
+                    } else if codec == kCMVideoCodecType_HEVC {
+                        let type = (data[0] >> 1) & 0x3F
+                        if type >= 19 && type <= 21 {
+                            let csdDataList = getH265ParameterSets(from: sampleBuffer)
+                            csd = convertCSDList(csdDataList)
+                        }
                     }
                 }
-            }
 
-            let frame = VideoEncodedFrame(csd: csd, nalus: naluList)
-            callback?.onCompressedFrame(layer: layer, frame: frame)
+                let frame = VideoEncodedFrame(csd: csd, data: data)
+                callback?.onCompressedFrame(layer: layer, frame: frame)
+            }
         }
+    }
+
+    private func convertCSDList(_ csdDataList: [NSData]?) -> [NSData]? {
+        guard let csdDataList = csdDataList else {
+            return nil
+        }
+
+        var list: [NSData] = []
+        for csdDataItem in csdDataList {
+            list.append(preprendAnnexB(what: csdDataItem))
+        }
+
+        return list
+    }
+
+    private func preprendAnnexB(what: NSData) -> NSData {
+        let data = NSMutableData()
+        data.append(Data(kAnnexBHeader))
+        data.append(what as Data)
+        return data
     }
 }
 
@@ -221,9 +259,9 @@ func extractNALUnits(from sampleBuffer: CMSampleBuffer) -> [NSData]? {
     return nalUnits
 }
 
-func getH264ParameterSets(from sampleBuffer: CMSampleBuffer) -> (sps: NSData?, pps: NSData?) {
+func getH264ParameterSets(from sampleBuffer: CMSampleBuffer) -> [NSData]? {
     guard let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer) else {
-        return (nil, nil)
+        return nil
     }
 
     var parameterSetCount = 0
@@ -237,42 +275,72 @@ func getH264ParameterSets(from sampleBuffer: CMSampleBuffer) -> (sps: NSData?, p
     )
 
     guard parameterSetCount >= 2 else {
-        return (nil, nil)
+        return nil
     }
 
     var parameterSetPointer: UnsafePointer<UInt8>?
     var parameterSetSize: Int = 0
-    var spsData: NSData?
-    var ppsData: NSData?
+    var csdList: [NSData] = []
 
-    // Get SPS
-    CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
+    for i in 0..<parameterSetCount {
+        CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
+            formatDescription,
+            parameterSetIndex: i,
+            parameterSetPointerOut: &parameterSetPointer,
+            parameterSetSizeOut: &parameterSetSize,
+            parameterSetCountOut: nil,
+            nalUnitHeaderLengthOut: nil
+        )
+
+        if let pointer = parameterSetPointer, parameterSetSize > 0 {
+            let csdItemData = NSData(bytes: pointer, length: parameterSetSize)
+            csdList.append(csdItemData)
+        }
+    }
+
+    return csdList
+}
+
+func getH265ParameterSets(from sampleBuffer: CMSampleBuffer) -> [NSData]? {
+    guard let formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer) else {
+        return nil
+    }
+
+    var parameterSetCount = 0
+    CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(
         formatDescription,
         parameterSetIndex: 0,
-        parameterSetPointerOut: &parameterSetPointer,
-        parameterSetSizeOut: &parameterSetSize,
-        parameterSetCountOut: nil,
+        parameterSetPointerOut: nil,
+        parameterSetSizeOut: nil,
+        parameterSetCountOut: &parameterSetCount,
         nalUnitHeaderLengthOut: nil
     )
 
-    if let pointer = parameterSetPointer, parameterSetSize > 0 {
-        spsData = NSData(bytes: pointer, length: parameterSetSize)
+    guard parameterSetCount >= 3 else {
+        return nil
     }
 
-    // Get PPS
-    CMVideoFormatDescriptionGetH264ParameterSetAtIndex(
-        formatDescription,
-        parameterSetIndex: 1,
-        parameterSetPointerOut: &parameterSetPointer,
-        parameterSetSizeOut: &parameterSetSize,
-        parameterSetCountOut: nil,
-        nalUnitHeaderLengthOut: nil
-    )
+    var parameterSetPointer: UnsafePointer<UInt8>?
+    var parameterSetSize: Int = 0
+    var csdList: [NSData] = []
 
-    if let pointer = parameterSetPointer, parameterSetSize > 0 {
-        ppsData = NSData(bytes: pointer, length: parameterSetSize)
+    for i in 0..<parameterSetCount {
+        CMVideoFormatDescriptionGetHEVCParameterSetAtIndex(
+            formatDescription,
+            parameterSetIndex: i,
+            parameterSetPointerOut: &parameterSetPointer,
+            parameterSetSizeOut: &parameterSetSize,
+            parameterSetCountOut: nil,
+            nalUnitHeaderLengthOut: nil
+        )
+
+        if let pointer = parameterSetPointer, parameterSetSize > 0 {
+            let csdData = NSData(bytes: pointer, length: parameterSetSize)
+            csdList.append(csdData)
+        }
+
     }
 
-    return (spsData, ppsData)
+    return csdList
 }
 

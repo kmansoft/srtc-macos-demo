@@ -37,6 +37,7 @@ class ViewController: NSViewController {
 
     @IBOutlet weak var cameraPreviewView: CameraPreviewView!
     @IBOutlet weak var rmsLabel: NSTextField!
+    @IBOutlet weak var codecLabel: NSTextField!
     @IBOutlet weak var inputGridView: NSGridView!
     @IBOutlet weak var serverTextField: NSTextField!
     @IBOutlet weak var tokenTextField: NSTextField!
@@ -92,8 +93,9 @@ class ViewController: NSViewController {
 
             let codec0 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_Default)
             let codec1 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_ConstrainedBaseline)
+            let codec2 = MacPubVideoCodec(codec: Codec_H265, profileLevelId: 0)
 
-            let videoConfig = MacPubVideoConfig(codecList: [codec0!, codec1!],
+            let videoConfig = MacPubVideoConfig(codecList: [codec0!, codec1!, codec2!],
                                                 simulcastLayerList: layerList)
 
 
@@ -271,12 +273,17 @@ class ViewController: NSViewController {
                 profileLevelIdValue = kVTProfileLevel_H264_Baseline_3_1
                 break
             }
+            codecLabel.stringValue = "H264"
+            break
+        case Codec_H265:
+            codecValue = kCMVideoCodecType_HEVC;
+            profileLevelIdValue = kVTProfileLevel_HEVC_Main_AutoLevel;
+            codecLabel.stringValue = "H265"
             break
         default:
             NSLog("Invalid codec \(codec)")
             return nil
         }
-
 
         let encoder = VideoEncoderWrappper(layer: track.getSimulcastLayer()?.getName(),
                                            width: width,
@@ -300,23 +307,19 @@ class ViewController: NSViewController {
         statusLabel.textColor = .systemRed
     }
 
-    private func onVideoCompressedFrame(layer: String?, csd: [NSData]?, nalus: [NSData]) {
+    private func onVideoCompressedFrame(layer: String?, csd: [NSData]?, data: NSData) {
         if layer == nil {
             if let csd = csd {
                 let list = csd.map({ Data($0) })
                 peerConnection?.setVideoSingleCodecSpecificData(list)
             }
-            for nalu in nalus {
-                peerConnection?.publishVideoSingleFrame(Data(nalu))
-            }
+            peerConnection?.publishVideoSingleFrame(Data(data))
         } else {
             if let csd = csd {
                 let list = csd.map({ Data($0) })
                 peerConnection?.setVideoSimulcastCodecSpecificData(layer, csd: list)
             }
-            for nalu in nalus {
-                peerConnection?.publishVideoSimulcastFrame(layer, data: Data(nalu))
-            }
+            peerConnection?.publishVideoSimulcastFrame(layer, data: Data(data))
         }
     }
 
@@ -451,7 +454,7 @@ class ViewController: NSViewController {
         }
         
         func onCompressedFrame(layer: String?, frame: VideoEncodedFrame) {
-            owner?.onVideoCompressedFrame(layer: layer, csd: frame.csd, nalus: frame.nalus)
+            owner?.onVideoCompressedFrame(layer: layer, csd: frame.csd, data: frame.data)
         }
     }
 
