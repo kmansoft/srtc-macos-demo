@@ -9,27 +9,28 @@
 
 #include "MacSrtcBindings.h"
 
-#include "srtc/sdp_offer.h"
-#include "srtc/sdp_answer.h"
-#include "srtc/peer_connection.h"
-#include "srtc/track.h"
 #include "srtc/logging.h"
+#include "srtc/peer_connection.h"
+#include "srtc/sdp_answer.h"
+#include "srtc/sdp_offer.h"
+#include "srtc/track.h"
+#include "srtc/util.h"
 
 #include "opus.h"
 #include "opus_defines.h"
 
-#include <vector>
 #include <memory>
 #include <mutex>
+#include <vector>
 
 namespace {
 
-const uint8_t kAnnexBPrefix[4] = { 0, 0, 0, 1 };
+const uint8_t kAnnexBPrefix[4] = {0, 0, 0, 1};
 
-NSError* createNSError(const srtc::Error& error)
-{
+NSError *createNSError(const srtc::Error &error) {
     NSDictionary *userInfo = @{
-        NSLocalizedDescriptionKey: [[NSString alloc] initWithUTF8String:error.message.c_str()]
+        NSLocalizedDescriptionKey :
+            [[NSString alloc] initWithUTF8String:error.message.c_str()]
     };
 
     NSError *ns = [NSError errorWithDomain:@"srtc"
@@ -39,18 +40,19 @@ NSError* createNSError(const srtc::Error& error)
     return ns;
 }
 
-MacCodecOptions* newCodecOptions(const std::shared_ptr<srtc::Track::CodecOptions>& codecOptions)
-{
+MacCodecOptions *newCodecOptions(
+    const std::shared_ptr<srtc::Track::CodecOptions> &codecOptions) {
     if (!codecOptions) {
         return nil;
     }
 
-    return [[MacCodecOptions alloc] initWithProfileLeveId:codecOptions->profileLevelId
-                                                 minptime:codecOptions->minptime
-                                                   stereo:codecOptions->stereo];
+    return [[MacCodecOptions alloc]
+        initWithProfileLeveId:codecOptions->profileLevelId
+                     minptime:codecOptions->minptime
+                       stereo:codecOptions->stereo];
 }
 
-}
+} // namespace
 
 // Codecs
 
@@ -67,19 +69,18 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 @implementation MacSimulcastLayer
 
 {
-    NSString* mName;
+    NSString *mName;
     NSInteger mWidth;
     NSInteger mHeight;
     NSInteger mFramesPerSecond;
     NSInteger mKilobitPerSecond;
 }
 
-- (id) initWithName:(NSString*) name
-              width:(NSInteger) width
-              height:(NSInteger) height
-     framesPerSecond:(NSInteger) framesPerSecond
-    kilobitPerSecond:(NSInteger) kilobitPerSecond
-{
+- (id)initWithName:(NSString *)name
+               width:(NSInteger)width
+              height:(NSInteger)height
+     framesPerSecond:(NSInteger)framesPerSecond
+    kilobitPerSecond:(NSInteger)kilobitPerSecond {
     self = [super init];
     if (self) {
         self->mName = name;
@@ -92,28 +93,23 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     return self;
 }
 
-- (NSString*) getName
-{
+- (NSString *)getName {
     return mName;
 }
 
-- (NSInteger) getWidth
-{
+- (NSInteger)getWidth {
     return mWidth;
 }
 
-- (NSInteger) getHeight
-{
+- (NSInteger)getHeight {
     return mHeight;
 }
 
-- (NSInteger) getFramesPerSecond
-{
+- (NSInteger)getFramesPerSecond {
     return mFramesPerSecond;
 }
 
-- (NSInteger) getKilobitsPerSecond
-{
+- (NSInteger)getKilobitsPerSecond {
     return mKilobitPerSecond;
 }
 
@@ -127,8 +123,7 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     std::string mCName;
 }
 
-- (id)initWithCName:(NSString*) cname
-{
+- (id)initWithCName:(NSString *)cname {
     self = [super init];
     if (self) {
         mCName = [cname UTF8String];
@@ -137,8 +132,7 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     return self;
 }
 
-- (std::string)getCName
-{
+- (std::string)getCName {
     return mCName;
 }
 
@@ -151,10 +145,7 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     uint32_t mProfileLevelId;
 }
 
-
-- (id)initWithCodec:(NSInteger) codec
-     profileLevelId:(NSInteger) profileLevelId
-{
+- (id)initWithCodec:(NSInteger)codec profileLevelId:(NSInteger)profileLevelId {
     self = [super init];
     if (self) {
         mCodec = static_cast<srtc::Codec>(codec);
@@ -164,13 +155,11 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     return self;
 }
 
-- (srtc::Codec)getCodec
-{
+- (srtc::Codec)getCodec {
     return mCodec;
 }
 
-- (uint32)getProfileLevelId
-{
+- (uint32)getProfileLevelId {
     return mProfileLevelId;
 }
 
@@ -179,34 +168,34 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 @implementation MacPubVideoConfig
 
 {
-    std::vector<srtc::PubVideoCodec> mCodecList;
+    std::vector<srtc::PubCodec> mCodecList;
     std::vector<srtc::SimulcastLayer> mSimulcastLayerList;
 }
 
-- (id)initWithCodecList:(NSArray<MacPubVideoCodec*>*) codecList
-     simulcastLayerList:(NSArray<MacSimulcastLayer*>*) simulcastLayerList;
+- (id)initWithCodecList:(NSArray<MacPubVideoCodec *> *)codecList
+     simulcastLayerList:(NSArray<MacSimulcastLayer *> *)simulcastLayerList;
 {
     self = [super init];
     if (self) {
         if (codecList) {
             for (NSUInteger i = 0; i < [codecList count]; i += 1) {
                 const auto codec = [codecList objectAtIndex:i];
-                mCodecList.push_back({
-                    .codec = [codec getCodec],
-                    .profile_level_id = [codec getProfileLevelId]
-                });
+                mCodecList.push_back(
+                    {.codec = [codec getCodec],
+                     .profile_level_id = [codec getProfileLevelId]});
             }
         }
         if (simulcastLayerList) {
             for (NSUInteger i = 0; i < [simulcastLayerList count]; i += 1) {
                 const auto layer = [simulcastLayerList objectAtIndex:i];
-                mSimulcastLayerList.push_back({
-                    .name = [[layer getName] UTF8String],
-                    .width = static_cast<uint16_t>([layer getWidth]),
-                    .height = static_cast<uint16_t>([layer getHeight]),
-                    .frames_per_second = static_cast<uint16_t>([layer getFramesPerSecond]),
-                    .kilobits_per_second = static_cast<uint32_t>([layer getKilobitsPerSecond])
-                });
+                mSimulcastLayerList.push_back(
+                    {.name = [[layer getName] UTF8String],
+                     .width = static_cast<uint16_t>([layer getWidth]),
+                     .height = static_cast<uint16_t>([layer getHeight]),
+                     .frames_per_second =
+                         static_cast<uint16_t>([layer getFramesPerSecond]),
+                     .kilobits_per_second =
+                         static_cast<uint32_t>([layer getKilobitsPerSecond])});
             }
         }
     }
@@ -214,13 +203,11 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     return self;
 }
 
-- (std::vector<srtc::PubVideoCodec>) getCodecList
-{
+- (std::vector<srtc::PubCodec>)getCodecList {
     return mCodecList;
 }
 
-- (std::vector<srtc::SimulcastLayer>) getSimulcastLayerList
-{
+- (std::vector<srtc::SimulcastLayer>)getSimulcastLayerList {
     return mSimulcastLayerList;
 }
 
@@ -234,11 +221,9 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     bool mStereo;
 }
 
-
-- (id) initWithCodec:(NSInteger) codec
-            minptime:(NSInteger) minptime
-              stereo:(Boolean) stereo
-{
+- (id)initWithCodec:(NSInteger)codec
+           minptime:(NSInteger)minptime
+             stereo:(Boolean)stereo {
     self = [super init];
     if (self) {
         mCodec = static_cast<srtc::Codec>(codec);
@@ -249,18 +234,15 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     return self;
 }
 
-- (srtc::Codec) getCodec
-{
+- (srtc::Codec)getCodec {
     return mCodec;
 }
 
-- (uint32) getMinPTime
-{
+- (uint32)getMinPTime {
     return mMinPTime;
 }
 
-- (bool) getStereo
-{
+- (bool)getStereo {
     return mStereo;
 }
 
@@ -269,21 +251,18 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 @implementation MacPubAudioConfig
 
 {
-    std::vector<srtc::PubAudioCodec> mCodecList;
+    std::vector<srtc::PubCodec> mCodecList;
 }
 
-- (id) initWithCodecList:(NSArray<MacPubAudioCodec*>*) codecList
-{
+- (id)initWithCodecList:(NSArray<MacPubAudioCodec *> *)codecList {
     self = [super init];
     if (self) {
         if (codecList) {
             for (NSUInteger i = 0; i < [codecList count]; i += 1) {
                 const auto codec = [codecList objectAtIndex:i];
-                mCodecList.push_back({
-                    .codec = [codec getCodec],
-                    .minptime = [codec getMinPTime],
-                    .stereo = [codec getStereo]
-                });
+                mCodecList.push_back({.codec = [codec getCodec],
+                                      .minptime = [codec getMinPTime],
+                                      .stereo = [codec getStereo]});
             }
         }
     }
@@ -291,11 +270,9 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     return self;
 }
 
-- (std::vector<srtc::PubAudioCodec>) getCodecList
-{
+- (std::vector<srtc::PubCodec>)getCodecList {
     return mCodecList;
 }
-
 
 @end
 
@@ -309,10 +286,9 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     Boolean mStereo;
 }
 
-- (id) initWithProfileLeveId:(NSInteger) profileLevelId
-                    minptime:(NSInteger) minptime
-                      stereo:(Boolean) stereo
-{
+- (id)initWithProfileLeveId:(NSInteger)profileLevelId
+                   minptime:(NSInteger)minptime
+                     stereo:(Boolean)stereo {
     self = [super init];
     if (self) {
         mProfileLevelId = profileLevelId;
@@ -323,18 +299,15 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     return self;
 }
 
-- (NSInteger) getProfileLevelId
-{
+- (NSInteger)getProfileLevelId {
     return mProfileLevelId;
 }
 
-- (NSInteger) getMinPTime
-{
+- (NSInteger)getMinPTime {
     return mMinPTime;
 }
 
-- (Boolean) getStereo
-{
+- (Boolean)getStereo {
     return mStereo;
 }
 
@@ -345,14 +318,14 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 @implementation MacTrack
 
 {
-    MacSimulcastLayer* mSimulcastLayer;
+    MacSimulcastLayer *mSimulcastLayer;
     NSInteger mCodec;
-    MacCodecOptions* mCodecOptions;
+    MacCodecOptions *mCodecOptions;
 }
 
-- (id) initWithLayer:(MacSimulcastLayer*) simulcastLayer
-               codec:(NSInteger) codec
-        codecOptions:(MacCodecOptions*) codecOptions;
+- (id)initWithLayer:(MacSimulcastLayer *)simulcastLayer
+              codec:(NSInteger)codec
+       codecOptions:(MacCodecOptions *)codecOptions;
 {
     self = [super init];
     if (self) {
@@ -364,18 +337,15 @@ const NSInteger H264_Profile_Main = 0x4d001f;
     return self;
 }
 
-- (MacSimulcastLayer*) getSimulcastLayer
-{
+- (MacSimulcastLayer *)getSimulcastLayer {
     return mSimulcastLayer;
 }
 
-- (NSInteger) getCodec
-{
+- (NSInteger)getCodec {
     return mCodec;
 }
 
-- (MacCodecOptions*) getCodecOptions
-{
+- (MacCodecOptions *)getCodecOptions {
     return mCodecOptions;
 }
 
@@ -385,14 +355,14 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 
 @implementation MacPublishConnectionStats
 
-- (id)initWithStats:(const srtc::PublishConnectionStats&) stats
-{
+- (id)initWithStats:(const srtc::PublishConnectionStats &)stats {
     self = [super init];
     if (self) {
         self.packetLossPercent = stats.packets_lost_percent;
         self.rttMs = stats.rtt_ms;
         self.bandwidthActualKbitSec = stats.bandwidth_actual_kbit_per_second;
-        self.bandwidthSuggestedKbitSec = stats.bandwidth_suggested_kbit_per_second;
+        self.bandwidthSuggestedKbitSec =
+            stats.bandwidth_suggested_kbit_per_second;
     }
 
     return self;
@@ -400,14 +370,18 @@ const NSInteger H264_Profile_Main = 0x4d001f;
 
 @end
 
-
 // Peer connection
 
-const NSInteger PeerConnectionState_Inactive = static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Inactive);
-const NSInteger PeerConnectionState_Connecting = static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Connecting);
-const NSInteger PeerConnectionState_Connected = static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Connected);
-const NSInteger PeerConnectionState_Failed = static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Failed);
-const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Closed);
+const NSInteger PeerConnectionState_Inactive =
+    static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Inactive);
+const NSInteger PeerConnectionState_Connecting =
+    static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Connecting);
+const NSInteger PeerConnectionState_Connected =
+    static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Connected);
+const NSInteger PeerConnectionState_Failed =
+    static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Failed);
+const NSInteger PeerConnectionState_Closed =
+    static_cast<NSInteger>(srtc::PeerConnection::ConnectionState::Closed);
 
 @implementation MacPeerConnection
 
@@ -420,19 +394,22 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     id<MacPeerConnectionStateCallback> mStateCallback;
     id<MacPublishConnectionStatsCallback> mStatsCallback;
 
-    MacTrack* mVideoSingleTrack;
-    NSArray<MacTrack*>* mVideoSimulcastTrackList;
-    MacTrack* mAudioTrack;
+    std::shared_ptr<srtc::Track> mSrtcVideoSingleTrack;
+    std::vector<std::shared_ptr<srtc::Track>> mSrtcVideoSimulcastTrackList;
+    std::shared_ptr<srtc::Track> mSrtcAudioTrack;
+
+    MacTrack *mMacVideoSingleTrack;
+    NSArray<MacTrack *> *mMacVideoSimulcastTrackList;
+    MacTrack *mMacAudioTrack;
 
     dispatch_queue_t mOpusQueue;
     std::mutex mOpusMutex;
     std::vector<uint8_t> mOpusInputBuffer;
-    OpusEncoder* mOpusEncoder;
+    OpusEncoder *mOpusEncoder;
     int64_t mOpusPts;
 }
 
-- (id)init
-{
+- (id)init {
     NSLog(@"MacPeerConnection init");
 
     srtc::setLogLevel(SRTC_LOG_W);
@@ -440,72 +417,77 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     self = [super init];
     if (self) {
         mIsClosing = false;
-        mConn = std::make_unique<srtc::PeerConnection>(srtc::Direction::Publish);
+        mConn =
+            std::make_unique<srtc::PeerConnection>(srtc::Direction::Publish);
         mOpusQueue = dispatch_queue_create("srtc.opus", DISPATCH_QUEUE_SERIAL);
         mOpusEncoder = nullptr;
         mOpusPts = 0;
 
         __weak typeof(self) weakSelf = self;
 
-        mConn->setConnectionStateListener([weakSelf](const srtc::PeerConnection::ConnectionState& state) {
-            __strong typeof(self) strongSelf = weakSelf;
-            if (strongSelf) {
-                [strongSelf onPeerConnectionState:state];
-            }
-        });
-        mConn->setPublishConnectionStatsListener([weakSelf](const srtc::PublishConnectionStats& stats) {
-            __strong typeof(self) strongSelf = weakSelf;
-            if (strongSelf) {
-                [strongSelf onPublishConnectionStats:stats];
-            }
-        });
+        mConn->setConnectionStateListener(
+            [weakSelf](const srtc::PeerConnection::ConnectionState &state) {
+                __strong typeof(self) strongSelf = weakSelf;
+                if (strongSelf) {
+                    [strongSelf onPeerConnectionState:state];
+                }
+            });
+        mConn->setPublishConnectionStatsListener(
+            [weakSelf](const srtc::PublishConnectionStats &stats) {
+                __strong typeof(self) strongSelf = weakSelf;
+                if (strongSelf) {
+                    [strongSelf onPublishConnectionStats:stats];
+                }
+            });
     }
-    
+
     return self;
 }
 
-- (void)setStateCallback:(id<MacPeerConnectionStateCallback>) callback
-{
+- (void)setStateCallback:(id<MacPeerConnectionStateCallback>)callback {
     mStateCallback = callback;
 }
 
-- (void) setStatsCallback:(id<MacPublishConnectionStatsCallback>) callback
-{
+- (void)setStatsCallback:(id<MacPublishConnectionStatsCallback>)callback {
     mStatsCallback = callback;
 }
 
-- (void)dealloc
-{
+- (void)dealloc {
     NSLog(@"MacPeerConnection dealloc");
     [self close];
 }
 
-- (NSString*) createOffer:(MacOfferConfig*) config
-              videoConfig:(MacPubVideoConfig*) videoConfig
-              audioConfig:(MacPubAudioConfig*) audioConfig
-                 outError:(NSError**) outError
-{
+- (NSString *)createOffer:(MacOfferConfig *)config
+              videoConfig:(MacPubVideoConfig *)videoConfig
+              audioConfig:(MacPubAudioConfig *)audioConfig
+                 outError:(NSError **)outError {
     std::lock_guard lock(mMutex);
 
-    srtc::PubOfferConfig srtcOfferConfig {
-        .cname = [config getCName],
-        .enable_bwe = true
-    };
-    std::optional<srtc::PubVideoConfig> srtcVideoConfig;
+    srtc::PubOfferConfig srtcOfferConfig{.cname = [config getCName],
+                                         .enable_bwe = true};
+
+    srtc::PubMediaConfig srtcMediaConfig = {};
+
     if (videoConfig) {
-        srtcVideoConfig = srtc::PubVideoConfig {
-            .codec_list = [videoConfig getCodecList],
-            .simulcast_layer_list = [videoConfig getSimulcastLayerList]
-        };
-    }
-    std::optional<srtc::PubAudioConfig> srtcAudioConfig;
-    if (audioConfig) {
-        srtcAudioConfig = srtc::PubAudioConfig {
-            .codec_list = [audioConfig getCodecList]
-        };
+        srtc::PubMediaItem item = {.media_id = "video_0",
+                                   .media_type = srtc::MediaType::Video,
+                                   .codec_list = [videoConfig getCodecList],
+                                   .layer_list =
+                                       [videoConfig getSimulcastLayerList]};
+
+        srtcMediaConfig.media_list.push_back(std::move(item));
     }
 
-    const auto [offer, error1] = mConn->createPublishOffer(srtcOfferConfig, srtcVideoConfig, srtcAudioConfig);
+    if (audioConfig) {
+        srtc::PubMediaItem item = {.media_id = "audio_0",
+                                   .media_type = srtc::MediaType::Audio,
+                                   .codec_list = [audioConfig getCodecList]};
+
+        srtcMediaConfig.media_list.push_back(std::move(item));
+    }
+
+    const auto [offer, error1] =
+        mConn->createPublishOffer(srtcOfferConfig, srtcMediaConfig);
     if (error1.isError()) {
         *outError = createNSError(error1);
         return nil;
@@ -524,22 +506,83 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
     }
 
     return [[NSString alloc] initWithUTF8String:sdp.c_str()];
-
 }
 
-- (void)setAnswer:(NSString*) answer
-         outError:(NSError**) outError
-{
+- (void)setAnswer:(NSString *)answer outError:(NSError **)outError {
     std::lock_guard lock(mMutex);
 
     const auto offer = mConn->getOffer();
     const auto selector = std::make_shared<srtc::HighestTrackSelector>();
 
     const auto answerStr = [answer UTF8String];
-    const auto [sdp, error1] = mConn->parsePublishAnswer(offer, answerStr, selector);
+    const auto [sdp, error1] =
+        mConn->parsePublishAnswer(offer, answerStr, selector);
     if (error1.isError()) {
         *outError = createNSError(error1);
         return;
+    }
+
+    for (const auto &track : sdp->getTrackList()) {
+        const auto type = track->getMediaType();
+        if (type == srtc::MediaType::Video) {
+            if (!track->isSimulcast()) {
+                mSrtcVideoSingleTrack = track;
+            } else {
+                mSrtcVideoSimulcastTrackList.push_back(track);
+            }
+        } else if (type == srtc::MediaType::Audio) {
+            mSrtcAudioTrack = track;
+        }
+    }
+
+    if (mSrtcVideoSingleTrack) {
+        const auto codec =
+            static_cast<NSInteger>(mSrtcVideoSingleTrack->getCodec());
+        const auto codecOptions = mSrtcVideoSingleTrack->getCodecOptions();
+
+        const auto track =
+            [[MacTrack alloc] initWithLayer:nil
+                                      codec:codec
+                               codecOptions:newCodecOptions(codecOptions)];
+        mMacVideoSingleTrack = track;
+    } else if (!mSrtcVideoSimulcastTrackList.empty()) {
+        const auto list = [[NSMutableArray<MacTrack *> alloc] init];
+
+        for (const auto &videoSimulcastTrack : mSrtcVideoSimulcastTrackList) {
+            const auto trackLayer = videoSimulcastTrack->getSimulcastLayer();
+            const auto layer = [[MacSimulcastLayer alloc]
+                    initWithName:[[NSString alloc]
+                                     initWithUTF8String:trackLayer->name
+                                                            .c_str()]
+                           width:static_cast<NSInteger>(trackLayer->width)
+                          height:static_cast<NSInteger>(trackLayer->height)
+                 framesPerSecond:static_cast<NSInteger>(
+                                     trackLayer->frames_per_second)
+                kilobitPerSecond:static_cast<NSInteger>(
+                                     trackLayer->kilobits_per_second)];
+
+            const auto codec =
+                static_cast<NSInteger>(videoSimulcastTrack->getCodec());
+            const auto codecOptions = videoSimulcastTrack->getCodecOptions();
+
+            const auto track =
+                [[MacTrack alloc] initWithLayer:layer
+                                          codec:codec
+                                   codecOptions:newCodecOptions(codecOptions)];
+            [list addObject:track];
+        }
+
+        mMacVideoSimulcastTrackList = [[NSArray alloc] initWithArray:list];
+    }
+
+    if (mSrtcAudioTrack) {
+        const auto codec = static_cast<NSInteger>(mSrtcAudioTrack->getCodec());
+        const auto codecOptions = mSrtcAudioTrack->getCodecOptions();
+        const auto track =
+            [[MacTrack alloc] initWithLayer:nil
+                                      codec:codec
+                               codecOptions:newCodecOptions(codecOptions)];
+        mMacAudioTrack = track;
     }
 
     const auto error2 = mConn->setAnswer(sdp);
@@ -547,195 +590,169 @@ const NSInteger PeerConnectionState_Closed = static_cast<NSInteger>(srtc::PeerCo
         *outError = createNSError(error2);
         return;
     }
-
-    if (const auto videoSingleTrack = mConn->getVideoSingleTrack()) {
-        const auto codec = static_cast<NSInteger>(videoSingleTrack->getCodec());
-        const auto codecOptions = videoSingleTrack->getCodecOptions();
-
-        const auto track = [[MacTrack alloc] initWithLayer:nil
-                                                     codec:codec
-                                              codecOptions:newCodecOptions(codecOptions)];
-        mVideoSingleTrack = track;
-    } else if (const auto videoSimulcastTrackList = mConn->getVideoSimulcastTrackList(); !videoSimulcastTrackList.empty()) {
-        const auto list = [[NSMutableArray<MacTrack*> alloc] init];
-
-        for (const auto& videoSimulcastTrack : videoSimulcastTrackList) {
-            const auto trackLayer = videoSimulcastTrack->getSimulcastLayer();
-            const auto layer = [[MacSimulcastLayer alloc] initWithName:[[NSString alloc]initWithUTF8String:trackLayer->name.c_str()]
-                                                                 width:static_cast<NSInteger>(trackLayer->width)
-                                                                height:static_cast<NSInteger>(trackLayer->height)
-                                                       framesPerSecond:static_cast<NSInteger>(trackLayer->frames_per_second)
-                                                      kilobitPerSecond:static_cast<NSInteger>(trackLayer->kilobits_per_second)];
-
-            const auto codec = static_cast<NSInteger>(videoSimulcastTrack->getCodec());
-            const auto codecOptions = videoSimulcastTrack->getCodecOptions();
-
-            const auto track = [[MacTrack alloc] initWithLayer:layer
-                                                         codec:codec
-                                                  codecOptions:newCodecOptions(codecOptions)];
-            [list addObject: track];
-        }
-
-        mVideoSimulcastTrackList = [[NSArray alloc] initWithArray: list];
-    }
-
-    if (const auto audioTrack = mConn->getAudioTrack()) {
-        const auto codec = static_cast<NSInteger>(audioTrack->getCodec());
-        const auto codecOptions = audioTrack->getCodecOptions();
-        const auto track = [[MacTrack alloc] initWithLayer:nil
-                                                     codec:codec
-                                              codecOptions:newCodecOptions(codecOptions)];
-        mAudioTrack = track;
-    }
 }
 
-- (MacTrack*) getVideoSingleTrack
-{
-    return mVideoSingleTrack;
+- (MacTrack *)getVideoSingleTrack {
+    return mMacVideoSingleTrack;
 }
 
-- (NSArray<MacTrack*>*) getVideoSimulcastTrackList
-{
-    return mVideoSimulcastTrackList;
+- (NSArray<MacTrack *> *)getVideoSimulcastTrackList {
+    return mMacVideoSimulcastTrackList;
 }
 
-- (MacTrack*) getAudioTrack
-{
-    return mAudioTrack;
+- (MacTrack *)getAudioTrack {
+    return mMacAudioTrack;
 }
 
-- (void)onPeerConnectionState:(srtc::PeerConnection::ConnectionState) state
-{
-    const char* label = "unknown";
+- (void)onPeerConnectionState:(srtc::PeerConnection::ConnectionState)state {
+    const char *label = "unknown";
     switch (state) {
-        case srtc::PeerConnection::ConnectionState::Inactive:
-            label = "inactive";
-            break;
-        case srtc::PeerConnection::ConnectionState::Connecting:
-            label = "connecting";
-            break;
-        case srtc::PeerConnection::ConnectionState::Connected:
-            label = "connected";
-            break;
-        case srtc::PeerConnection::ConnectionState::Failed:
-            label = "failed";
-            break;
-        case srtc::PeerConnection::ConnectionState::Closed:
-            label = "closed";
-            break;
+    case srtc::PeerConnection::ConnectionState::Inactive:
+        label = "inactive";
+        break;
+    case srtc::PeerConnection::ConnectionState::Connecting:
+        label = "connecting";
+        break;
+    case srtc::PeerConnection::ConnectionState::Connected:
+        label = "connected";
+        break;
+    case srtc::PeerConnection::ConnectionState::Failed:
+        label = "failed";
+        break;
+    case srtc::PeerConnection::ConnectionState::Closed:
+        label = "closed";
+        break;
     }
     NSLog(@"PeerConnection state = %s", label);
 
     __weak typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
-        __strong typeof(self) strongSelf = weakSelf;
-        if (strongSelf) {
-            std::lock_guard lock(strongSelf->mMutex);
-            if (strongSelf->mStateCallback) {
-                const auto nsState = static_cast<NSInteger>(state);
-                [strongSelf->mStateCallback onPeerConnectionStateChanged: nsState];
-            }
-        }
+      __strong typeof(self) strongSelf = weakSelf;
+      if (strongSelf) {
+          std::lock_guard lock(strongSelf->mMutex);
+          if (strongSelf->mStateCallback) {
+              const auto nsState = static_cast<NSInteger>(state);
+              [strongSelf->mStateCallback onPeerConnectionStateChanged:nsState];
+          }
+      }
     });
 }
 
-- (void)onPublishConnectionStats:(const srtc::PublishConnectionStats&)  stats
-{
-    const auto macStats = [[MacPublishConnectionStats alloc] initWithStats: stats];
+- (void)onPublishConnectionStats:(const srtc::PublishConnectionStats &)stats {
+    const auto macStats =
+        [[MacPublishConnectionStats alloc] initWithStats:stats];
 
     __weak typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
-        __strong typeof(self) strongSelf = weakSelf;
-        if (strongSelf) {
-            std::lock_guard lock(strongSelf->mMutex);
-            if (strongSelf->mStatsCallback) {
-                [strongSelf->mStatsCallback onPublishConnectionStats: macStats];
-            }
-        }
+      __strong typeof(self) strongSelf = weakSelf;
+      if (strongSelf) {
+          std::lock_guard lock(strongSelf->mMutex);
+          if (strongSelf->mStatsCallback) {
+              [strongSelf->mStatsCallback onPublishConnectionStats:macStats];
+          }
+      }
     });
 }
 
-- (void)setVideoSingleCodecSpecificData:(NSArray<NSData*>*) csd
-{
+- (void)setVideoSingleCodecSpecificData:(NSArray<NSData *> *)csd {
     std::lock_guard lock(mMutex);
-    if (const auto& conn = mConn) {
+    if (const auto &conn = mConn) {
         std::vector<srtc::ByteBuffer> list;
 
         for (NSUInteger i = 0; i < [csd count]; i += 1) {
             const auto data = [csd objectAtIndex:i];
             srtc::ByteBuffer buf;
             buf.append(kAnnexBPrefix, sizeof(kAnnexBPrefix));
-            buf.append(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
+            buf.append(static_cast<const uint8_t *>(data.bytes),
+                       static_cast<size_t>(data.length));
             list.push_back(std::move(buf));
         }
 
-        conn->setVideoSingleCodecSpecificData(std::move(list));
+        conn->setVideoCodecSpecificData(mSrtcVideoSingleTrack, std::move(list));
     }
 }
 
-- (void)publishVideoSingleFrame:(NSData*) data
-{
+- (void)publishVideoSingleFrame:(NSData *)data {
     std::lock_guard lock(mMutex);
-    if (const auto& conn = mConn) {
-        srtc::ByteBuffer buf(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
+    if (const auto &conn = mConn) {
+        srtc::ByteBuffer buf(static_cast<const uint8_t *>(data.bytes),
+                             static_cast<size_t>(data.length));
 
         const auto pts_usec = srtc::getStableTimeMicros();
-        conn->publishVideoSingleFrame(pts_usec, std::move(buf));
+        conn->publishVideoFrame(mSrtcVideoSingleTrack, pts_usec,
+                                std::move(buf));
     }
 }
 
-- (void) setVideoSimulcastCodecSpecificData:(NSString*) layerName
-                                        csd:(NSArray<NSData*>*) csd
-{
+- (void)setVideoSimulcastCodecSpecificData:(NSString *)layerName
+                                       csd:(NSArray<NSData *> *)csd {
     std::lock_guard lock(mMutex);
-    if (const auto& conn = mConn) {
+    if (const auto &conn = mConn) {
+        const auto layerNameUTF8 = [layerName UTF8String];
         std::vector<srtc::ByteBuffer> list;
 
         for (NSUInteger i = 0; i < [csd count]; i += 1) {
             const auto data = [csd objectAtIndex:i];
-            srtc::ByteBuffer buf(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
+            srtc::ByteBuffer buf(static_cast<const uint8_t *>(data.bytes),
+                                 static_cast<size_t>(data.length));
             list.push_back(std::move(buf));
         }
 
-        conn->setVideoSimulcastCodecSpecificData([layerName UTF8String], std::move(list));
-    }
+        std::shared_ptr<srtc::Track> layerTrack;
+        for (const auto &track : mSrtcVideoSimulcastTrackList) {
+            if (track->getSimulcastLayer()->name == layerNameUTF8) {
+                layerTrack = track;
+                break;
+            }
+        }
+        assert(layerTrack);
 
+        conn->setVideoCodecSpecificData(layerTrack, std::move(list));
+    }
 }
 
-- (void) publishVideoSimulcastFrame:(NSString*) layerName
-                               data:(NSData*) data
-{
+- (void)publishVideoSimulcastFrame:(NSString *)layerName data:(NSData *)data {
     std::lock_guard lock(mMutex);
-    if (const auto& conn = mConn) {
-        srtc::ByteBuffer buf(static_cast<const uint8_t*>(data.bytes), static_cast<size_t>(data.length));
+    if (const auto &conn = mConn) {
+        const auto layerNameUTF8 = [layerName UTF8String];
+        srtc::ByteBuffer buf(static_cast<const uint8_t *>(data.bytes),
+                             static_cast<size_t>(data.length));
 
         const auto pts_usec = srtc::getStableTimeMicros();
-        conn->publishVideoSimulcastFrame(pts_usec, [layerName UTF8String], std::move(buf));
+
+        std::shared_ptr<srtc::Track> layerTrack;
+        for (const auto &track : mSrtcVideoSimulcastTrackList) {
+            if (track->getSimulcastLayer()->name == layerNameUTF8) {
+                layerTrack = track;
+                break;
+            }
+        }
+        assert(layerTrack);
+
+        conn->publishVideoFrame(layerTrack, pts_usec, std::move(buf));
     }
 }
 
-- (void) publishAudioFrame:(NSData*) data
-{
+- (void)publishAudioFrame:(NSData *)data {
     {
         std::lock_guard lock(mOpusMutex);
 
-        const auto ptr = static_cast<const uint8_t*>([data bytes]);
+        const auto ptr = static_cast<const uint8_t *>([data bytes]);
         const auto size = static_cast<size_t>([data length]);
 
         mOpusInputBuffer.insert(mOpusInputBuffer.end(), ptr, ptr + size);
     }
 
     __weak typeof(self) weakSelf = self;
-    dispatch_async(mOpusQueue, ^ {
-        __strong typeof(self) strongSelf = weakSelf;
-        if (strongSelf) {
-            [strongSelf flushOpusQueue];
-        }
+    dispatch_async(mOpusQueue, ^{
+      __strong typeof(self) strongSelf = weakSelf;
+      if (strongSelf) {
+          [strongSelf flushOpusQueue];
+      }
     });
 }
 
-- (void)close
-{
+- (void)close {
     NSLog(@"MacPeerConnection close");
 
     // We are closing
@@ -762,8 +779,7 @@ struct OpusFrame {
     srtc::ByteBuffer buf;
 };
 
-- (void) flushOpusQueue
-{
+- (void)flushOpusQueue {
     if (mIsClosing) {
         return;
     }
@@ -773,15 +789,11 @@ struct OpusFrame {
 
     {
         std::lock_guard lock(mMutex);
-        if (mConn) {
-            if (const auto answer = mConn->getAnswer()) {
-                if (const auto track = answer->getAudioTrack()) {
-                    if (const auto options = track->getCodecOptions()) {
-                        minptime = options->minptime;
-                        if (options->stereo) {
-                            channels = 2;
-                        }
-                    }
+        if (mSrtcAudioTrack) {
+            if (const auto options = mSrtcAudioTrack->getCodecOptions()) {
+                minptime = options->minptime;
+                if (options->stereo) {
+                    channels = 2;
                 }
             }
         }
@@ -797,10 +809,11 @@ struct OpusFrame {
         // This is thread safe because we are inside a mutex
         if (mOpusEncoder == nullptr) {
             const auto encoderSize = opus_encoder_get_size(channels);
-            mOpusEncoder = static_cast<OpusEncoder*>(malloc(encoderSize));
+            mOpusEncoder = static_cast<OpusEncoder *>(malloc(encoderSize));
             std::memset(mOpusEncoder, 0, encoderSize);
 
-            if (opus_encoder_init(mOpusEncoder, kOpusSampleRate, channels, OPUS_APPLICATION_VOIP) != 0) {
+            if (opus_encoder_init(mOpusEncoder, kOpusSampleRate, channels,
+                                  OPUS_APPLICATION_VOIP) != 0) {
                 free(mOpusEncoder);
                 mOpusEncoder = nullptr;
             } else {
@@ -820,21 +833,24 @@ struct OpusFrame {
             }
 
             while (mOpusInputBuffer.size() >= size) {
-                srtc::ByteBuffer output { 4000 };
-                const auto encodedSize = opus_encode(mOpusEncoder,
-                                                     reinterpret_cast<const opus_int16*>(mOpusInputBuffer.data()),
-                                                     static_cast<int>(samples),
-                                                     output.data(),
-                                                     static_cast<opus_int32>(output.capacity()));
+                srtc::ByteBuffer output{4000};
+                const auto encodedSize =
+                    opus_encode(mOpusEncoder,
+                                reinterpret_cast<const opus_int16 *>(
+                                    mOpusInputBuffer.data()),
+                                static_cast<int>(samples), output.data(),
+                                static_cast<opus_int32>(output.capacity()));
 
                 if (encodedSize > 0) {
                     output.resize(static_cast<size_t>(encodedSize));
-                    outputList.push_back({ mOpusPts, std::move(output) });
+                    outputList.push_back({mOpusPts, std::move(output)});
 
-                    NSLog(@"Encoded %zu bytes into %d Opus bytes", size, encodedSize);
+                    NSLog(@"Encoded %zu bytes into %d Opus bytes", size,
+                          encodedSize);
                 }
 
-                mOpusInputBuffer.erase(mOpusInputBuffer.begin(), mOpusInputBuffer.begin() + size);
+                mOpusInputBuffer.erase(mOpusInputBuffer.begin(),
+                                       mOpusInputBuffer.begin() + size);
                 mOpusPts += minptime * 1000;
             }
         }
@@ -848,7 +864,8 @@ struct OpusFrame {
                 auto front = std::move(outputList.front());
                 outputList.erase(outputList.begin());
 
-                mConn->publishAudioFrame(front.pts_usec, std::move(front.buf));
+                mConn->publishAudioFrame(mSrtcAudioTrack, front.pts_usec,
+                                         std::move(front.buf));
             }
         }
     }

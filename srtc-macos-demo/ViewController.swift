@@ -54,6 +54,7 @@ class ViewController: NSViewController {
     private var peerConnectionStateCallback: MacPeerConnectionStateCallback?
     private var peerConnectionStatsCallback: MacPublishConnectionStatsCallback?
 
+    private var isVideoEncodersStarted = false
     private let videoEncoderWrapperLock = NSLock()
     private var videoEncoderWrapperList: [VideoEncoderWrappper] = []
 
@@ -123,6 +124,7 @@ class ViewController: NSViewController {
             simulcastCheck.isHidden = true
 
             isConnecting = true
+            isVideoEncodersStarted = false
 
             startSdpExchange(url: url, token: token, offer: offer!)
         } else {
@@ -212,6 +214,13 @@ class ViewController: NSViewController {
             showError("Failed to set SDP answer: \(error.localizedDescription)")
             return
         }
+    }
+
+    private func startVideoEncoders() {
+        if isVideoEncodersStarted {
+            return
+        }
+        isVideoEncodersStarted = true
 
         if let videoSingleTrack = peerConnection?.getVideoSingleTrack() {
             NSLog("Video single track: \(videoSingleTrack.getCodec())")
@@ -349,6 +358,8 @@ class ViewController: NSViewController {
 
     private func onPeerConnectionStateChanged(_ status: Int) {
         if status == PeerConnectionState_Connected {
+            startVideoEncoders()
+
             if let start = publishStartDate  {
                 let elapsed = Date().timeIntervalSince(start)
                 let millis = Int(elapsed * 1000.0)
