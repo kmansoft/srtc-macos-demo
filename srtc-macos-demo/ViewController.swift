@@ -6,8 +6,8 @@
 //
 
 import Cocoa
-import CoreMedia
 import CoreGraphics
+import CoreMedia
 import VideoToolbox
 
 class ViewController: NSViewController {
@@ -17,18 +17,22 @@ class ViewController: NSViewController {
 
         connectButton.action = #selector(connectButtonAction)
 
-        serverTextField.stringValue = sharedPrefs.string(forKey: kPrefsKeyServer) ?? ""
-        tokenTextField.stringValue = sharedPrefs.string(forKey: kPrefsKeyToken) ?? ""
+        serverTextField.stringValue =
+            sharedPrefs.string(forKey: kPrefsKeyServer) ?? ""
+        tokenTextField.stringValue =
+            sharedPrefs.string(forKey: kPrefsKeyToken) ?? ""
 
         captureCallback = CaptureCallback(owner: self)
         captureManager.registerCallback(captureCallback!)
 
-        cameraPreviewView.setPreviewLayer(captureManager.createCameraPreviewLayer())
+        cameraPreviewView.setPreviewLayer(
+            captureManager.createCameraPreviewLayer()
+        )
     }
-    
+
     override func viewDidDisappear() {
         super.viewDidDisappear()
-        
+
         captureManager.unregisterCallback(captureCallback!)
         cameraPreviewView.setPreviewLayer(nil)
 
@@ -48,7 +52,7 @@ class ViewController: NSViewController {
     private let sharedPrefs = UserDefaults.standard
     private let kPrefsKeyServer = "server"
     private let kPrefsKeyToken = "token"
-    
+
     private var isConnecting = false
     private var peerConnection: MacPeerConnection?
     private var peerConnectionStateCallback: MacPeerConnectionStateCallback?
@@ -63,7 +67,7 @@ class ViewController: NSViewController {
     @IBAction private func connectButtonAction(_ sender: NSButton) {
         let server = serverTextField.stringValue
         let token = tokenTextField.stringValue
-        
+
         guard !server.isEmpty, !token.isEmpty else {
             showError("Server and token fields are required")
             return
@@ -82,36 +86,70 @@ class ViewController: NSViewController {
             // Configure and the generate the offer
             let offerConfig = MacOfferConfig(cName: UUID().uuidString)
 
-            let layerList = if simulcastCheck.state == .on {
-                [
-                    MacSimulcastLayer(name: "low", width: 320, height: 180, framesPerSecond: 15, kilobitPerSecond: 500)!,
-                    MacSimulcastLayer(name: "mid", width: 640, height: 360, framesPerSecond: 15, kilobitPerSecond: 1000)!,
-                    MacSimulcastLayer(name: "hi", width: 1280, height: 720, framesPerSecond: 15, kilobitPerSecond: 1500)!
-                ]
-            } else {
-                nil as [MacSimulcastLayer]?
-            }
+            let layerList =
+                if simulcastCheck.state == .on {
+                    [
+                        MacSimulcastLayer(
+                            name: "low",
+                            width: 320,
+                            height: 180,
+                            framesPerSecond: 15,
+                            kilobitPerSecond: 500
+                        )!,
+                        MacSimulcastLayer(
+                            name: "mid",
+                            width: 640,
+                            height: 360,
+                            framesPerSecond: 15,
+                            kilobitPerSecond: 1000
+                        )!,
+                        MacSimulcastLayer(
+                            name: "hi",
+                            width: 1280,
+                            height: 720,
+                            framesPerSecond: 15,
+                            kilobitPerSecond: 1500
+                        )!,
+                    ]
+                } else {
+                    nil as [MacSimulcastLayer]?
+                }
 
-            let codec0 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_Default)
-            let codec1 = MacPubVideoCodec(codec: Codec_H264, profileLevelId: H264_Profile_ConstrainedBaseline)
+            let codec0 = MacPubVideoCodec(
+                codec: Codec_H264,
+                profileLevelId: H264_Profile_Default
+            )
+            let codec1 = MacPubVideoCodec(
+                codec: Codec_H264,
+                profileLevelId: H264_Profile_ConstrainedBaseline
+            )
             let codec2 = MacPubVideoCodec(codec: Codec_H265, profileLevelId: 0)
 
-            let videoConfig = MacPubVideoConfig(codecList: [codec0!, codec1!, codec2!],
-                                                simulcastLayerList: layerList)
+            let videoConfig = MacPubVideoConfig(
+                codecList: [codec0!, codec1!, codec2!],
+                simulcastLayerList: layerList
+            )
 
+            let audioConfig = MacPubAudioConfig(codecList: [
+                MacPubAudioCodec(codec: Codec_Opus, minptime: 10, stereo: false)
+            ])
 
-            let audioConfig = MacPubAudioConfig(codecList: [MacPubAudioCodec(codec: Codec_Opus, minptime: 10, stereo: false)])
-
-            peerConnectionStateCallback = PeerConnectionStateCallback(owner: self)
-            peerConnectionStatsCallback = PeerConnectionStatsCallback(owner: self)
+            peerConnectionStateCallback = PeerConnectionStateCallback(
+                owner: self
+            )
+            peerConnectionStatsCallback = PeerConnectionStatsCallback(
+                owner: self
+            )
 
             peerConnection = MacPeerConnection()
             peerConnection?.setStateCallback(peerConnectionStateCallback)
             peerConnection?.setStatsCallback(peerConnectionStatsCallback)
 
-            let offer = try? peerConnection?.createOffer(offerConfig,
-                                                         videoConfig: videoConfig,
-                                                         audioConfig: audioConfig)
+            let offer = try? peerConnection?.createOffer(
+                offerConfig,
+                videoConfig: videoConfig,
+                audioConfig: audioConfig
+            )
             if offer == nil {
                 peerConnection?.close()
                 peerConnection = nil
@@ -168,7 +206,9 @@ class ViewController: NSViewController {
                 onSdpAnswer(data: data, response: response)
             } catch {
                 disconnect()
-                showError("Failed to connect to server: \(error.localizedDescription)")
+                showError(
+                    "Failed to connect to server: \(error.localizedDescription)"
+                )
             }
         }
     }
@@ -184,9 +224,12 @@ class ViewController: NSViewController {
             return
         }
 
-        guard httpResponse.statusCode >= 200 && httpResponse.statusCode < 300 else {
+        guard httpResponse.statusCode >= 200 && httpResponse.statusCode < 300
+        else {
             disconnect()
-            showError("Invalid SDP http status code: \(httpResponse.statusCode)")
+            showError(
+                "Invalid SDP http status code: \(httpResponse.statusCode)"
+            )
             return
         }
 
@@ -208,7 +251,7 @@ class ViewController: NSViewController {
 
         var error: NSError?
         peerConnection?.setAnswer(answer, outError: &error)
-        
+
         if let error = error {
             disconnect()
             showError("Failed to set SDP answer: \(error.localizedDescription)")
@@ -222,17 +265,21 @@ class ViewController: NSViewController {
         }
         isVideoEncodersStarted = true
 
-        if let videoSingleTrack = peerConnection?.getVideoSingleTrack() {
-            NSLog("Video single track: \(videoSingleTrack.getCodec())")
+        if let track = peerConnection?.getVideoSingleTrack() {
+            NSLog("Video single track: \(track.getCodec())")
 
-            if let encoder = createVideoEncoderWrapper(track: videoSingleTrack) {
+            if let encoder = createVideoEncoderWrapper(track: track) {
                 videoEncoderWrapperList.append(encoder)
             }
-        } else if let videoSimulcastTrackList = peerConnection?.getVideoSimulcastTrackList(), !videoSimulcastTrackList.isEmpty {
-            for videoSimulcastTrack in videoSimulcastTrackList {
-                NSLog("Video simulcast track: \(videoSimulcastTrack.getCodec())")
+        } else if let list = peerConnection?.getVideoSimulcastTrackList(),
+            !list.isEmpty
+        {
+            for track in list {
+                NSLog(
+                    "Video simulcast track: \(track.getCodec())"
+                )
 
-                if let encoder = createVideoEncoderWrapper(track: videoSimulcastTrack) {
+                if let encoder = createVideoEncoderWrapper(track: track) {
                     videoEncoderWrapperList.append(encoder)
                 }
             }
@@ -247,7 +294,9 @@ class ViewController: NSViewController {
         }
     }
 
-    private func createVideoEncoderWrapper(track: MacTrack) -> VideoEncoderWrappper? {
+    private func createVideoEncoderWrapper(track: MacTrack)
+        -> VideoEncoderWrappper?
+    {
         var width = 1280
         var height = 720
         var bitrate = 1500
@@ -264,19 +313,20 @@ class ViewController: NSViewController {
         let codec = track.getCodec()
         let codecOptions = track.getCodecOptions()
         let profileLevelId = codecOptions?.getProfileLevelId() ?? 0
-        switch(codec) {
+        switch codec {
         case Codec_H264:
             codecValue = kCMVideoCodecType_H264
-            switch(profileLevelId) {
+            switch profileLevelId {
             case H264_Profile_Default:
                 profileLevelIdValue = kVTProfileLevel_H264_Baseline_3_1
-                break;
+                break
             case H264_Profile_ConstrainedBaseline:
-                profileLevelIdValue = kVTProfileLevel_H264_ConstrainedBaseline_AutoLevel
-                break;
+                profileLevelIdValue =
+                    kVTProfileLevel_H264_ConstrainedBaseline_AutoLevel
+                break
             case H264_Profile_Main:
                 profileLevelIdValue = kVTProfileLevel_H264_Main_3_1
-                break;
+                break
             default:
                 NSLog("Warning: invalid profile \(profileLevelId)")
                 profileLevelIdValue = kVTProfileLevel_H264_Baseline_3_1
@@ -285,8 +335,8 @@ class ViewController: NSViewController {
             codecLabel.stringValue = "H264"
             break
         case Codec_H265:
-            codecValue = kCMVideoCodecType_HEVC;
-            profileLevelIdValue = kVTProfileLevel_HEVC_Main_AutoLevel;
+            codecValue = kCMVideoCodecType_HEVC
+            profileLevelIdValue = kVTProfileLevel_HEVC_Main_AutoLevel
             codecLabel.stringValue = "H265"
             break
         default:
@@ -294,14 +344,16 @@ class ViewController: NSViewController {
             return nil
         }
 
-        let encoder = VideoEncoderWrappper(layer: track.getSimulcastLayer()?.getName(),
-                                           width: width,
-                                           height: height,
-                                           codecType: codecValue,
-                                           profileLevelId: profileLevelIdValue,
-                                           framesPerSecond: 15,
-                                           bitrate: bitrate * 1000,
-                                           callback: VideoFrameCallback(owner: self))
+        let encoder = VideoEncoderWrappper(
+            layer: track.getSimulcastLayer()?.getName(),
+            width: width,
+            height: height,
+            codecType: codecValue,
+            profileLevelId: profileLevelIdValue,
+            framesPerSecond: 15,
+            bitrate: bitrate * 1000,
+            callback: VideoFrameCallback(owner: self)
+        )
         return encoder
 
     }
@@ -316,7 +368,11 @@ class ViewController: NSViewController {
         statusLabel.textColor = .systemRed
     }
 
-    private func onVideoCompressedFrame(layer: String?, csd: [NSData]?, data: NSData) {
+    private func onVideoCompressedFrame(
+        layer: String?,
+        csd: [NSData]?,
+        data: NSData
+    ) {
         if layer == nil {
             if let csd = csd {
                 let list = csd.map({ Data($0) })
@@ -326,13 +382,18 @@ class ViewController: NSViewController {
         } else {
             if let csd = csd {
                 let list = csd.map({ Data($0) })
-                peerConnection?.setVideoSimulcastCodecSpecificData(layer, csd: list)
+                peerConnection?.setVideoSimulcastCodecSpecificData(
+                    layer,
+                    csd: list
+                )
             }
             peerConnection?.publishVideoSimulcastFrame(layer, data: Data(data))
         }
     }
 
-    private class PeerConnectionStateCallback: NSObject, MacPeerConnectionStateCallback {
+    private class PeerConnectionStateCallback: NSObject,
+        MacPeerConnectionStateCallback
+    {
         private weak var owner: ViewController?
 
         init(owner: ViewController) {
@@ -344,7 +405,9 @@ class ViewController: NSViewController {
         }
     }
 
-    private class PeerConnectionStatsCallback: NSObject, MacPublishConnectionStatsCallback {
+    private class PeerConnectionStatsCallback: NSObject,
+        MacPublishConnectionStatsCallback
+    {
         private weak var owner: ViewController?
 
         init(owner: ViewController) {
@@ -360,7 +423,7 @@ class ViewController: NSViewController {
         if status == PeerConnectionState_Connected {
             startVideoEncoders()
 
-            if let start = publishStartDate  {
+            if let start = publishStartDate {
                 let elapsed = Date().timeIntervalSince(start)
                 let millis = Int(elapsed * 1000.0)
 
@@ -370,34 +433,40 @@ class ViewController: NSViewController {
             }
         }
 
-        let label = switch status {
-        case PeerConnectionState_Inactive:
-            "inactive"
-        case PeerConnectionState_Connecting:
-            "connecting"
-        case PeerConnectionState_Connected:
-            "connected"
-        case PeerConnectionState_Failed:
-            "failed"
-        case PeerConnectionState_Closed:
-            "closed"
-        default:
-            "unknown (\(status))"
-        }
+        let label =
+            switch status {
+            case PeerConnectionState_Inactive:
+                "inactive"
+            case PeerConnectionState_Connecting:
+                "connecting"
+            case PeerConnectionState_Connected:
+                "connected"
+            case PeerConnectionState_Failed:
+                "failed"
+            case PeerConnectionState_Closed:
+                "closed"
+            default:
+                "unknown (\(status))"
+            }
 
         showStatus("PeerConnection state: \(label)")
 
-        if status == PeerConnectionState_Failed || status == PeerConnectionState_Closed {
+        if status == PeerConnectionState_Failed
+            || status == PeerConnectionState_Closed
+        {
             stopVideoEncoders()
         }
     }
 
-    private func onPeerConnectionStatsChanged(_ stats: MacPublishConnectionStats)
-    {
-        let message = String(format: "Stats: act %.2f kb/s, sugg %.2f kb/s, rtt = %.2f ms",
-                             stats.bandwidthActualKbitSec,
-                             stats.bandwidthSuggestedKbitSec,
-                             stats.rttMs)
+    private func onPeerConnectionStatsChanged(
+        _ stats: MacPublishConnectionStats
+    ) {
+        let message = String(
+            format: "Stats: act %.2f kb/s, sugg %.2f kb/s, rtt = %.2f ms",
+            stats.bandwidthActualKbitSec,
+            stats.bandwidthSuggestedKbitSec,
+            stats.rttMs
+        )
         showStatus(message)
     }
 
@@ -407,8 +476,11 @@ class ViewController: NSViewController {
         init(owner: ViewController) {
             self.owner = owner
         }
-        
-        override func onCameraFrame(sampleBuffer: CMSampleBuffer, preview: CGImage?) {
+
+        override func onCameraFrame(
+            sampleBuffer: CMSampleBuffer,
+            preview: CGImage?
+        ) {
             owner?.onCameraFrame(sampleBuffer: sampleBuffer, preview: preview)
         }
 
@@ -430,8 +502,14 @@ class ViewController: NSViewController {
 
             // Copy the Authorization header from the original request if available
             if let originalRequest = task.originalRequest,
-               let authorizationHeader = originalRequest.value(forHTTPHeaderField: "Authorization") {
-                redirectedRequest.setValue(authorizationHeader, forHTTPHeaderField: "Authorization")
+                let authorizationHeader = originalRequest.value(
+                    forHTTPHeaderField: "Authorization"
+                )
+            {
+                redirectedRequest.setValue(
+                    authorizationHeader,
+                    forHTTPHeaderField: "Authorization"
+                )
             }
 
             // Complete with the modified request
@@ -448,7 +526,8 @@ class ViewController: NSViewController {
     private let captureManager = CaptureManager.shared
     private var captureCallback: CaptureCallback!
 
-    private func onCameraFrame(sampleBuffer: CMSampleBuffer, preview: CGImage?) {
+    private func onCameraFrame(sampleBuffer: CMSampleBuffer, preview: CGImage?)
+    {
         videoEncoderWrapperLock.lock()
         defer { videoEncoderWrapperLock.unlock() }
 
@@ -459,27 +538,37 @@ class ViewController: NSViewController {
 
     private class VideoFrameCallback: NSObject, VideoEncodedFrameCallback {
         private weak var owner: ViewController?
-        
+
         init(owner: ViewController) {
             self.owner = owner
         }
-        
+
         func onCompressedFrame(layer: String?, frame: VideoEncodedFrame) {
-            owner?.onVideoCompressedFrame(layer: layer, csd: frame.csd, data: frame.data)
+            owner?.onVideoCompressedFrame(
+                layer: layer,
+                csd: frame.csd,
+                data: frame.data
+            )
         }
     }
 
     private func onMicrophoneFrame(sampleBuffer: CMSampleBuffer) {
         let blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer)
         let blockBufferDataLength = CMBlockBufferGetDataLength(blockBuffer!)
-        var blockBufferData  = [UInt8](repeating: 0, count: blockBufferDataLength)
+        var blockBufferData = [UInt8](
+            repeating: 0,
+            count: blockBufferDataLength
+        )
 
-        let status = CMBlockBufferCopyDataBytes(blockBuffer!,
-                                                atOffset: 0,
-                                                dataLength: blockBufferDataLength, destination: &blockBufferData)
+        let status = CMBlockBufferCopyDataBytes(
+            blockBuffer!,
+            atOffset: 0,
+            dataLength: blockBufferDataLength,
+            destination: &blockBufferData
+        )
         guard status == noErr else { return }
 
-        let rms = calculateRMS(data:blockBufferData)
+        let rms = calculateRMS(data: blockBufferData)
         DispatchQueue.main.async { [weak self] in
             self?.rmsLabel.stringValue = String(format: "RMS = %.2f", rms)
         }
@@ -493,12 +582,13 @@ class ViewController: NSViewController {
         var sum = 0.0
         var i = 0
         while i < data.count {
-            let int16_value = Int16(littleEndian: Int16(data[i]) | (Int16(data[i + 1]) << 8))
-            let float_value = Double(int16_value)  / 32767.0
+            let int16_value = Int16(
+                littleEndian: Int16(data[i]) | (Int16(data[i + 1]) << 8)
+            )
+            let float_value = Double(int16_value) / 32767.0
             sum += float_value * float_value
             i += 2
         }
         return sqrt(sum / Double(data.count))
     }
 }
-
